@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import TextMessage from "./TextMessage";
 import ImageMessage from "./ImageMessage";
 
+
 const variants = {
   hidden: { scale: 0.8, opacity: 0 },
   visible: { scale: 1, opacity: 1 },

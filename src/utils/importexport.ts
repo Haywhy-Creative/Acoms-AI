@@ -65,7 +65,7 @@ export function handleImportChats(file: File): Promise<Error | boolean> {
       const getOnlyUniqueIds = (arr: string[]) => Array.from(new Set(arr));
       reader.onload = function (e) {
         let chats: Backup;
-        try {
+  try {
           chats = JSON.parse(e.target?.result as string);
         } catch (error) {
           return reject("Invalid json file");

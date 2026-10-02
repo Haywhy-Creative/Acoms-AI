@@ -31,12 +31,9 @@ export default function SettingsTab({ visible }: { visible: boolean }) {
   const [theme, setTheme] = useTheme((state) => [state.theme, state.setTheme]);
 
   const clearAllChats = useChat((state) => state.clearAllChats);
-  const [apikey, setApiKey] = useAuth((state) => [
-    state.apikey,
-    state.setApiKey,
+  const [] = useAuth((state) => [
   ]);
-  const [newApiKey, setNewApiKey] = useState(apikey);
-  const [editApiKey, setEditApiKey] = useState(false);
+
   const [confirmDeleteChats, setConfirmDeleteChats] = useState(false);
   const [importExportStatus, setImportExportStatus] = useState({
     importing: false,
@@ -48,9 +45,6 @@ export default function SettingsTab({ visible }: { visible: boolean }) {
   }
 
   function handleSetNewApiKey() {
-    if (newApiKey.trim().length === 0) return;
-    setApiKey(newApiKey);
-    setEditApiKey(false);
   }
   function handleChatsFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -164,43 +158,7 @@ export default function SettingsTab({ visible }: { visible: boolean }) {
             </button>
           </div>
         </div>
-        <div className="">
-          <label
-            htmlFor="apikey"
-            className="font-bold  dark:text-gray-300 mb-2"
-          >
-            Edit Apikey
-          </label>
-          <div className="flex items-center mb-4 justify-between border border-gray-200 rounded dark:border-gray-700 p-2">
-            <input
-              type={editApiKey ? "text" : "password"}
-              id="apikey"
-              value={newApiKey}
-              readOnly={!editApiKey}
-              onChange={(e) => setNewApiKey(e.target.value)}
-              className="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-              placeholder="sk-•••••••••••••••••••••••••••"
-              required
-            />
-            {editApiKey ? (
-              <button
-                type="button"
-                className="w-11 text-xl"
-                onClick={handleSetNewApiKey}
-              >
-                <IonIcon icon={checkmarkOutline} />
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="w-11 text-xl"
-                onClick={() => setEditApiKey(true)}
-              >
-                <IonIcon icon={createOutline} />
-              </button>
-            )}
-          </div>
-        </div>
+    
         <div className="">
           <label
             htmlFor="dall-e-2"

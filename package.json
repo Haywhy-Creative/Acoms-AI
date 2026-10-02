@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@ionic/react": "^7.3.3",
+    "appwrite": "^28.1.0",
     "axios": "^1.6.7",
     "classnames": "^2.3.2",
     "framer-motion": "^10.16.4",
@@ -23,6 +24,7 @@
     "react-spinners": "^0.13.8",
     "react-syntax-highlighter": "^15.5.0",
     "shortid": "^2.2.16",
+    "sweetalert2": "^11.26.25",
     "use-debounce": "^9.0.4",
     "zustand": "^4.4.1"
   },

@@ -23,7 +23,7 @@ export default function GptIntro() {
             }
           )}
           type="button"
-          onClick={() => setModel("gpt-3.5-turbo")}
+         onClick={() => setModel("openai/gpt-oss-120b")}
         >
           <span
             className={classNames(" mr-2 transition", {
@@ -32,7 +32,7 @@ export default function GptIntro() {
           >
             <i className="fa-solid fa-bolt "></i>
           </span>
-          <span className="mr-2">gpt - 3.5</span>
+          <span className="mr-2">acoms - 3.5</span>
         </button>
 
         <button
@@ -45,7 +45,7 @@ export default function GptIntro() {
               "opacity-50": isGptThreeSelected,
             }
           )}
-          onClick={() => setModel("gpt-4")}
+onClick={() => setModel("openai/gpt-oss-20b")}
         >
           <span
             className={classNames("mr-2 transition", {
@@ -54,12 +54,12 @@ export default function GptIntro() {
           >
             <IonIcon icon={sparkles} />
           </span>
-          <span className="mr-2">gpt - 4</span>
+          <span className="mr-2">acoms - 4</span>
         </button>
       </div>
       <div className=" h-96 flex items-start justify-center">
         <h1 className=" text-4xl font-bold mt-5 text-center text-gray-300">
-          ChatGPT
+          ACOMS AI
         </h1>
       </div>
     </>

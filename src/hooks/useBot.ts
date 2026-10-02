@@ -3,7 +3,7 @@ import useChat, { ChatMessageType, useSettings } from "../store/store";
 import { fetchResults } from "../services/chatService";
 import { useDebouncedCallback } from "use-debounce";
 import { createMessage } from "../utils/createMessage";
-
+import Swal from 'sweetalert2';
 type Props = {
   index: number;
   chat: ChatMessageType;
@@ -46,13 +46,26 @@ export default function useBot({ index, chat }: Props) {
     }
 
     function handleOnError(error: Error | string) {
-      if (typeof error === "string") setError(error);
-      else setError(error.message);
-      resultRef.current = "Sorry, looks like I'm having a bad day.";
-      setResult("Sorry, looks like I'm having a bad day.");
+      const errorMessage = typeof error === "string" ? error : error.message;
+      setError(errorMessage);
+      
+      const friendlyMessage = "Sorry! Please try again. Something went wrong.";
+      
+      // Update result stream reference and UI state
+      resultRef.current = friendlyMessage;
+      setResult(friendlyMessage);
       addMessage();
-    }
 
+      // Trigger a sleek SweetAlert2 toast/popup notification
+      Swal.fire({
+        icon: 'error',
+        title: 'Oops!',
+        text: friendlyMessage,
+        confirmButtonColor: '#7c4dff',
+        timer: 3500,
+        timerProgressBar: true,
+      });
+    }
     function handleOnCompletion() {
       addMessage();
     }
@@ -75,25 +88,23 @@ export default function useBot({ index, chat }: Props) {
                 role: chat.role,
                 content: chat.content,
               }))
-          : [
-              {
-                role: chatsRef.current[index - 1].role,
-                content: chatsRef.current[index - 1].content,
-              },
-            ];
-        if (useForAllChats && systemMessage) {
+        : [
+    {
+      role: chatsRef.current[index - 1]?.role ?? "user",
+      content: chatsRef.current[index - 1]?.content ?? "",
+    },
+  ];  if (useForAllChats && systemMessage) {
           prevChats = [
             { role: "system", content: systemMessage},
             ...prevChats,
           ];
         }
-        await fetchResults(
-          prevChats,
-          selectedModal,
-          signal,
-          handleOnData,
-          handleOnCompletion
-        );
+     await fetchResults(
+  prevChats,
+  signal,            // ✅ removed selectedModal — fetchResults reads the model from the store itself
+  handleOnData,
+  handleOnCompletion
+);
       } catch (error) {
         if (error instanceof Error || typeof error === "string") {
           if (mounted) handleOnError(error);
