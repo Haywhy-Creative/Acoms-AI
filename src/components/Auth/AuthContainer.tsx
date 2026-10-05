@@ -52,13 +52,32 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
       setUser(session);
 
       // Sync useAuth store and load user chat history namespace
-      useAuth.getState().setUser({
-        id: session.$id,
-        name: session.name,
-        email: session.email,
-        avatar: "/imgs/default-avatar.jpg",
-      });
-      useChat.getState().loadUserHistory(session.$id);
+      try {
+  // 1. Fetch user's saved preferences (where your bucket image URL is stored)
+  const prefs = await account.getPrefs();
+
+  // 2. Sync useAuth store with session details and their custom avatar (falling back to default if none exists)
+  useAuth.getState().setUser({
+    id: session.$id,
+    name: session.name,
+    email: session.email,
+    avatar: prefs?.avatar || "/imgs/default-avatar.jpg",
+  });
+
+  // 3. Load chat history namespace
+  useChat.getState().loadUserHistory(session.$id);
+  
+} catch (error) {
+  console.error("Failed to load user preferences or session state:", error);
+  // Fallback default setup if preferences fail to fetch
+  useAuth.getState().setUser({
+    id: session.$id,
+    name: session.name,
+    email: session.email,
+    avatar: "/imgs/default-avatar.jpg",
+  });
+  useChat.getState().loadUserHistory(session.$id);
+}
 
       setView('chat');
       Swal.fire({ icon: 'success', title: view === 'login' ? 'Logged In!' : 'Account Created!', timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });

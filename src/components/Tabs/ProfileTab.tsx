@@ -5,6 +5,7 @@ import { useAuth } from "../../store/store";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import classNames from "classnames";
+import { account, storage, ID, Permission, Role } from "../../appwriteConfig"; // Added Permission and Role
 
 const varinats = {
   hidden: { opacity: 0 },
@@ -20,30 +21,67 @@ export default function ProfileTab({ visible }: { visible: boolean }) {
   ]);
   const [editName, setEditName] = useState(false);
   const [myname, setMyName] = useState(name);
+  const [loading, setLoading] = useState(false);
 
-  function handlePicChange(e: React.ChangeEvent<HTMLInputElement>) {
-    if (e.target.files) {
-      const reader = new FileReader();
-      reader.readAsDataURL(e.target.files[0]);
-      reader.onloadend = () => {
-        const base64String = reader.result;
+  // Handle Profile Picture Change & Save to Appwrite Storage Bucket
+  async function handlePicChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      
+      try {
+        // 1. Upload file to your 'profiles' Appwrite Storage Bucket with explicit permissions
+       const uploadedFile = await storage.createFile(
+  "6ac3940c002ffc7b4c55", 
+  ID.unique(), 
+  file,
+  [
+    Permission.read(Role.any()),     
+    Permission.update(Role.users()), 
+    Permission.delete(Role.users())  
+  ]
+);
+
+        // 2. Get the public view URL for the uploaded file
+        const fileUrl = storage.getFileView(
+          "6ac3940c002ffc7b4c55",
+          uploadedFile.$id
+        ).toString();
+
+        // 3. Save the URL into Appwrite Account Preferences so it persists across logouts
+        await account.updatePrefs({ avatar: fileUrl });
+
+        // 4. Update local global state immediately
         setUser({
-          avatar: base64String as string,
+          avatar: fileUrl,
           name,
           email: `${name}@${name}.com`,
         });
-      };
+
+      } catch (error: any) {
+        console.error("Failed to upload image:", error);
+        alert(error.message || "Failed to upload image");
+      }
     }
   }
 
-  function handleUpdateName() {
+  async function handleUpdateName() {
     if (myname.trim().length === 0) return;
-    setUser({
-      avatar,
-      name: myname,
-      email: `${myname}@${myname}.com`,
-    });
-    setEditName(false);
+    setLoading(true);
+
+    try {
+      await account.updateName(myname);
+      setUser({
+        avatar,
+        name: myname,
+        email: `${myname}@${myname}.com`,
+      });
+      setEditName(false);
+    } catch (error: any) {
+      console.error("Failed to update name:", error);
+      alert(error.message || "Failed to update name");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -110,6 +148,7 @@ export default function ProfileTab({ visible }: { visible: boolean }) {
               type="button"
               className="flex items-center ml-2 text-xl"
               onClick={handleUpdateName}
+              disabled={loading}
             >
               <IonIcon icon={checkmark} />
             </button>
