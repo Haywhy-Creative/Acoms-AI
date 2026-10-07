@@ -40,16 +40,10 @@ export default function Navbar({
     state.setModal,
   ]);
   const name = useAuth((state) => state.user.name);
-  const groupedModels = modalsList.reduce(
-    (obj: Record<string, string[]>, modal) => {
-      const prefix = modal.split("-")[0] + "-" + modal.split("-")[1];
-      return {
-        ...obj,
-        [prefix]: [...(obj[prefix] || []), modal],
-      };
-    },
-    {}
-  );
+ const modelFromEnv = import.meta.env.VITE_AI_MODEL || "openai/gpt-oss-120b";
+const groupedModels = {
+  [modelFromEnv]: [modelFromEnv],
+};
 
   return (
     <>
@@ -87,70 +81,43 @@ export default function Navbar({
           <div className="history overflow-y-auto h-[calc(100%-60px)]">
             <ChatHistory />
           </div>
-          <div className="account  font-bold  z-20 bg-[#202123] border-t border-gray-500 shadow  ">
-            <div className=" self-stretch mr-4 w-full mb-2">
-              <select
-                value={selectedModal}
-                onChange={(e) => setModal(e.target.value as ModalList)}
-                className="border border-gray-300    focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-              >
-                {Object.keys(groupedModels).map((group) => (
-                  <optgroup
-                    label={group.toUpperCase()}
-                    key={group}
-                    // disabled={group.startsWith("dall-e")}
-                  >
-                    {groupedModels[group].map((modal) => (
-                      <option value={modal} key={modal}>
-                        {modal}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </div>
-            <div className="[&>.options]:focus-within:visible">
-              <button
-                type="button"
-                className="px-2 relative py-2 inline-flex w-full items-center hover:bg-gray-700 transition group "
-              >
-                <Avatar className=" h-11 w-11" />
+        <div className="account font-bold z-20 bg-[#202123] border-t border-gray-500 shadow">
+  {/* The model selection dropdown has been removed completely in favor of .env configuration */}
+  <div className="[&>.options]:focus-within:visible">
+    <button
+      type="button"
+      className="px-2 relative py-2 inline-flex w-full items-center hover:bg-gray-700 transition group"
+    >
+      <Avatar className="h-11 w-11" />
 
-                <span className="p-2">{name}</span>
-                <span className=" ml-auto  text-gray-400 text-2xl ">
-                  <IonIcon icon={ellipsisHorizontalOutline} />
-                </span>
-              </button>
-              <div className="options absolute bottom-12 rounded-md left-0 right-0 bg-gray-800 font-normal invisible transition  m-2 z-30 text-gray-300 ">
-                <button
-                  className=" p-2   hover:bg-gray-700 w-full text-left flex items-center"
-                  onClick={() => setSystemMessageModalVisible(true)}
-                >
-                  <span className="mr-2 p-1 text-xl  flex items-center">
-                    <IonIcon icon={chatboxEllipsesOutline} />
-                  </span>
-                  <span>Custom instructions</span>
-                </button>
-                <button
-                  className=" p-2   hover:bg-gray-700 w-full text-left flex items-center"
-                  onClick={() => setModalVisible(true)}
-                >
-                  <span className="mr-2 p-1  text-xl flex items-center">
-                    <IonIcon icon={settingsOutline} />
-                  </span>
-                  <span>Settings</span>
-                </button>
-                <div className="h-[1px] bg-gray-300"></div>
-                {/* maybe in future i will add authentication */}
-                {/* <button className=" p-2   hover:bg-gray-700  w-full  text-left flex items-center">
-                  <span className="mr-2 p-1 text-xl flex items-center">
-                    <IonIcon icon={logOutOutline} />
-                  </span>
-                  <span>Log out</span>
-                </button> */}
-              </div>
-            </div>
-          </div>
+      <span className="p-2">{name}</span>
+      <span className="ml-auto text-gray-400 text-2xl">
+        <IonIcon icon={ellipsisHorizontalOutline} />
+      </span>
+    </button>
+    <div className="options absolute bottom-12 rounded-md left-0 right-0 bg-gray-800 font-normal invisible transition m-2 z-30 text-gray-300">
+      <button
+        className="p-2 hover:bg-gray-700 w-full text-left flex items-center"
+        onClick={() => setSystemMessageModalVisible(true)}
+      >
+        <span className="mr-2 p-1 text-xl flex items-center">
+          <IonIcon icon={chatboxEllipsesOutline} />
+        </span>
+        <span>Custom instructions</span>
+      </button>
+      <button
+        className="p-2 hover:bg-gray-700 w-full text-left flex items-center"
+        onClick={() => setModalVisible(true)}
+      >
+        <span className="mr-2 p-1 text-xl flex items-center">
+          <IonIcon icon={settingsOutline} />
+        </span>
+        <span>Settings</span>
+      </button>
+      <div className="h-[1px] bg-gray-300"></div>
+    </div>
+  </div>
+</div>
           <button
             type="button"
             onClick={() => setActive(false)}

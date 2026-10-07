@@ -7,11 +7,8 @@ import moment from "moment";
 import { ImageSize } from "../services/chatService";
 // ✅ FIX 1: Groq models instead of OpenAI models.
 // (Verify current IDs at console.groq.com/docs/models)
-const modalsList = [
-  "openai/gpt-oss-120b",
-  "openai/gpt-oss-20b",
-  "qwen/qwen3.6-27b",
-] as const;
+// Replace the old array with this single constant
+const DEFAULT_MODEL = import.meta.env.VITE_AI_MODEL || "openai/gpt-oss-120b";
 export interface ChatMessageType {
   role: "user" | "assistant" | "system";
   content: string;
@@ -50,7 +47,7 @@ export interface ThemeType {
   theme: Theme;
   setTheme: (theme: Theme) => void;
 }
-export type ModalList = (typeof modalsList)[number];
+export type ModalList = (typeof DEFAULT_MODEL)[number];
 export interface SettingsType {
   settings: {
     sendChatHistory: boolean;
@@ -294,7 +291,7 @@ const useSettings = createWithEqualityFn<SettingsType>()(
 selectedModal: "openai/gpt-oss-120b",
         dalleImageSize: { "dall-e-2": "256x256", "dall-e-3": "1024x1024" },
       },
-      modalsList: modalsList,
+      modalsList: DEFAULT_MODEL,
       isSystemMessageModalVisible: false,
       isModalVisible: false,
       setSystemMessage: (value) => {
@@ -356,7 +353,7 @@ selectedModal: "openai/gpt-oss-120b",
       partialize: (state: SettingsType) => ({ settings: state.settings }),
       migrate: (persistedState: unknown, version: number) => {
         const state = persistedState as SettingsType;
-        const valid = (modalsList as readonly string[]).includes(
+        const valid = (DEFAULT_MODEL as readonly string[]).includes(
           state?.settings?.selectedModal as string
         );
         if (version < 2 || !valid) {

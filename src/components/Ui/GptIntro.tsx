@@ -11,57 +11,17 @@ export default function GptIntro() {
   const isGptThreeSelected = selectedModel.startsWith("gpt-3");
   return (
     <>
-      <div className="modals md:w-1/5 md:min-w-[300px] mx-2 relative flex items-center rounded-md justify-between mt-5 md:mx-auto  bg-gray-200 dark:bg-[#202123] gap-2">
-        <button
-          title="GPT-3 Turbo"
-          className={classNames(
-            "gpt3 uppercase  rounded-md  font-bold p-2 transition  flex-1 flex items-center  dark:text-white justify-center",
-            {
-              "bg-white dark:bg-dark-primary border-2 dark:border-white border-gray-700":
-                isGptThreeSelected,
-              "opacity-50": !isGptThreeSelected,
-            }
-          )}
-          type="button"
-         onClick={() => setModel("openai/gpt-oss-120b")}
-        >
-          <span
-            className={classNames(" mr-2 transition", {
-              "text-teal-400": isGptThreeSelected,
-            })}
-          >
-            <i className="fa-solid fa-bolt "></i>
-          </span>
-          <span className="mr-2">acoms - 3.5</span>
-        </button>
-
-        <button
-          title="GPT - 4"
-          className={classNames(
-            "gpt4 uppercase rounded p-2 transition  dark:text-white flex-1 flex  items-center justify-center",
-            {
-              "bg-white dark:bg-dark-primary border-2 dark:border-white border-gray-700":
-                !isGptThreeSelected,
-              "opacity-50": isGptThreeSelected,
-            }
-          )}
-onClick={() => setModel("openai/gpt-oss-20b")}
-        >
-          <span
-            className={classNames("mr-2 transition", {
-              "text-teal-400": !isGptThreeSelected,
-            })}
-          >
-            <IonIcon icon={sparkles} />
-          </span>
-          <span className="mr-2">acoms - 4</span>
-        </button>
-      </div>
-      <div className=" h-96 flex items-start justify-center">
-        <h1 className=" text-4xl font-bold mt-5 text-center text-gray-300">
-          ACOMS AI
-        </h1>
-      </div>
+      
+<div className="w-full pt-6 pb-2 flex flex-col items-center justify-start space-y-3">
+  <div className="flex items-center space-x-3 bg-gray-800/60 border border-gray-700/60 px-5 py-2 rounded-full shadow-inner">
+    <span className="text-teal-400 text-xl flex items-center">
+      <IonIcon icon={sparkles} />
+    </span>
+    <h1 className="text-2xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-blue-500">
+      ACOMS-AI
+    </h1>
+  </div>
+</div>
     </>
   );
 }
