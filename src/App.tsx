@@ -42,66 +42,72 @@ function App() {
   }, []);
 
 const checkUserStatus = async () => {
-    try {
-      const session = await account.get();
-      setUser(session);
+  try {
+    const session = await account.get();
+    setUser(session);
 
-      // 1. Sync user data to Zustand useAuth store
-      useAuth.getState().setUser({
-        id: session.$id,
-        name: session.name,
-        email: session.email,
-        avatar: "/imgs/default-avatar.jpg",
-      });
+    // 1. Sync user data to Zustand useAuth store
+    useAuth.getState().setUser({
+      id: session.$id,
+      name: session.name,
+      email: session.email,
+      avatar: "/imgs/default-avatar.jpg",
+    });
 
-      // 2. 🔒 TaskMaster Partition: Load this specific user's chat history immediately
-      useChat.getState().loadUserHistory(session.$id);
+    // 2. 🔒 TaskMaster Partition: Load this specific user's chat history immediately
+    useChat.getState().loadUserHistory(session.$id);
 
-      setView("chat");
-    } catch (err) {
-      setUser(null);
+    setView("chat");
+  } catch (err) {
+    setUser(null);
 
-      // 3. Reset Zustand useAuth store state on failure/logged out state
-      useAuth.getState().setUser({
-        id: "",
-        name: "Your name?",
-        email: "",
-        avatar: "/imgs/default-avatar.jpg",
-      });
+    // 3. Reset Zustand useAuth store state on failure/logged out state
+    useAuth.getState().setUser({
+      id: "",
+      name: "Your name?",
+      email: "",
+      avatar: "/imgs/default-avatar.jpg",
+    });
 
-      // 4. Fallback chat history to guest/empty state partition
-      useChat.getState().loadUserHistory("guest");
+    // 4. Fallback chat history to guest/empty state partition
+    useChat.getState().loadUserHistory("guest");
 
-      if (view === "chat") {
-        setView("landing");
-      }
-    } finally {
-      setLoading(false);
+    // Redirect to login instead of landing if they aren't authenticated
+    const savedView = localStorage.getItem("auth_view");
+    if (savedView === "signup" || savedView === "forgot-password" || savedView === "reset-password") {
+      setView(savedView);
+    } else {
+      setView("login");
+      localStorage.setItem("auth_view", "login");
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleLogout = async () => {
-    try {
-      await account.deleteSession("current");
-      setUser(null);
+   try {
+     await account.deleteSession("current");
+     setUser(null);
 
-      // Clear auth state
-      useAuth.getState().setUser({
-        id: "",
-        name: "Your name?",
-        email: "",
-        avatar: "/imgs/default-avatar.jpg",
-      });
+     // Clear auth state
+     useAuth.getState().setUser({
+       id: "",
+       name: "Your name?",
+       email: "",
+       avatar: "/imgs/default-avatar.jpg",
+     });
 
-      // 🔒 TaskMaster Partition: Flush chat store memory on logout
-      useChat.getState().loadUserHistory("guest");
+     // 🔒 TaskMaster Partition: Flush chat store memory on logout
+     useChat.getState().loadUserHistory("guest");
 
-      setView("landing");
-      localStorage.setItem("auth_view", "landing");
-    } catch (err) {
-      console.error("Logout error:", err);
-    }
-  };
+     // Redirect straight to login page
+     setView("login");
+     localStorage.setItem("auth_view", "login");
+   } catch (err) {
+     console.error("Logout error:", err);
+   }
+ };
   useEffect(() => {
     if (theme === "dark") {
       document.documentElement.classList.add("dark");
