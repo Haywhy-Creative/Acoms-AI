@@ -26,9 +26,6 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
   const [recoveryEmail, setRecoveryEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
-  // ==========================================
-  // Authentication & 8-Character Validation
-  // ==========================================
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -137,17 +134,17 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col bg-[#0f111a] font-['Plus_Jakarta_Sans',sans-serif] text-white">
+    <div className="min-h-screen w-full flex flex-col bg-white dark:bg-[#0f111a] font-['Plus_Jakarta_Sans',sans-serif] text-slate-900 dark:text-white transition-colors duration-200">
       
-      {/* Global Navbar with Professional Vector Logo */}
-      <header className="w-full px-6 lg:px-16 py-5 flex items-center justify-between border-b border-white/5 bg-[#121520]/80 backdrop-blur-md sticky top-0 z-50">
+      {/* Global Navbar */}
+      <header className="w-full px-6 lg:px-16 py-5 flex items-center justify-between border-b border-slate-200 dark:border-white/5 bg-white/80 dark:bg-[#121520]/80 backdrop-blur-md sticky top-0 z-50">
         <div onClick={() => setView('landing')} className="flex items-center space-x-3 cursor-pointer group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7c4dff]/30 to-teal-500/20 border border-[#7c4dff]/40 flex items-center justify-center text-[#9670ff] shadow-lg shadow-[#7c4dff]/10 group-hover:scale-105 transition-transform">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7c4dff]/30 to-teal-500/20 border border-[#7c4dff]/40 flex items-center justify-center text-[#7c4dff] dark:text-[#9670ff] shadow-lg shadow-[#7c4dff]/10 group-hover:scale-105 transition-transform">
             <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
             </svg>
           </div>
-          <span className="text-xl font-extrabold tracking-wider bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+          <span className="text-xl font-extrabold tracking-wider bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 bg-clip-text text-transparent">
             ACOMS-AI
           </span>
         </div>
@@ -155,14 +152,14 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
         <div className="flex items-center space-x-4">
           <button
             onClick={() => setView('dashboard')}
-            className={`text-sm font-semibold px-4 py-2 rounded-xl transition-colors cursor-pointer ${view === 'dashboard' ? 'text-[#7c4dff] bg-[#7c4dff]/10' : 'text-slate-300 hover:text-white'}`}
+            className={`text-sm font-semibold px-4 py-2 rounded-xl transition-colors cursor-pointer ${view === 'dashboard' ? 'text-[#7c4dff] bg-[#7c4dff]/10' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}
           >
             Dashboard
           </button>
           {view !== 'login' && (
             <button
               onClick={() => setView('login')}
-              className="text-sm font-semibold text-slate-300 hover:text-white px-4 py-2 rounded-xl transition-colors cursor-pointer"
+              className="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-4 py-2 rounded-xl transition-colors cursor-pointer"
             >
               Login
             </button>
@@ -170,7 +167,7 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
           {view !== 'signup' && (
             <button
               onClick={() => setView('signup')}
-              className="bg-[#7c4dff] hover:bg-[#9670ff] text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-[#7c4dff]/30 cursor-pointer"
+              className="bg-[#7c4dff] hover:bg-[#6b3fd4] text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-[#7c4dff]/30 cursor-pointer"
             >
               Get Started
             </button>
@@ -183,28 +180,28 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
         
         {/* Landing Page */}
         {view === 'landing' && (
-          <div className="max-w-4xl w-full text-center py-16 px-8 bg-gradient-to-b from-[#1c1f2b]/95 to-[#121520]/95 border border-white/10 rounded-[32px] shadow-2xl backdrop-blur-xl relative overflow-hidden my-auto">
+          <div className="max-w-4xl w-full text-center py-16 px-8 bg-white dark:bg-gradient-to-b dark:from-[#1c1f2b]/95 dark:to-[#121520]/95 border border-slate-200 dark:border-white/10 rounded-[32px] shadow-2xl backdrop-blur-xl relative overflow-hidden my-auto">
             <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-[#7c4dff]/15 rounded-full blur-3xl pointer-events-none"></div>
             
-            <span className="inline-block px-4 py-1.5 rounded-full bg-[#7c4dff]/10 border border-[#7c4dff]/25 text-[#9670ff] text-xs font-semibold mb-6">
+            <span className="inline-block px-4 py-1.5 rounded-full bg-[#7c4dff]/10 border border-[#7c4dff]/25 text-[#7c4dff] dark:text-[#9670ff] text-xs font-semibold mb-6">
               🚀 Next-Gen Computer Science Intelligence Workspace
             </span>
-            <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-6 bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent leading-tight">
+            <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-6 bg-gradient-to-r from-slate-900 via-slate-700 to-slate-500 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent leading-tight">
               Engineered for code, algorithms &amp; architecture.
             </h1>
-            <p className="text-slate-400 text-base md:text-lg mb-10 leading-relaxed max-w-2xl mx-auto">
+            <p className="text-slate-600 dark:text-slate-400 text-base md:text-lg mb-10 leading-relaxed max-w-2xl mx-auto">
               Built specifically for computer science students and software engineering teams. ACOMS-AI provides secure workspace isolation, deep technical syntax parsing, and robust AI models.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={() => setView('signup')}
-                className="bg-[#7c4dff] hover:bg-[#9670ff] text-white font-bold py-4 px-10 rounded-2xl transition-all shadow-xl shadow-[#7c4dff]/30 cursor-pointer text-base"
+                className="bg-[#7c4dff] hover:bg-[#6b3fd4] text-white font-bold py-4 px-10 rounded-2xl transition-all shadow-xl shadow-[#7c4dff]/30 cursor-pointer text-base"
               >
                 Get Started Free
               </button>
               <button
                 onClick={() => setView('dashboard')}
-                className="bg-[#252936] hover:bg-[#2a2f3d] text-white font-semibold py-4 px-10 rounded-2xl border border-white/10 transition-all cursor-pointer text-base"
+                className="bg-slate-100 dark:bg-[#252936] hover:bg-slate-200 dark:hover:bg-[#2a2f3d] text-slate-800 dark:text-white font-semibold py-4 px-10 rounded-2xl border border-slate-200 dark:border-white/10 transition-all cursor-pointer text-base shadow-sm"
               >
                 Explore Dashboard
               </button>
@@ -214,18 +211,18 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
 
         {/* Dashboard View */}
         {view === 'dashboard' && (
-          <div className="max-w-5xl w-full py-12 px-6 sm:px-10 bg-gradient-to-b from-[#1c1f2b]/95 to-[#121520]/95 border border-white/10 rounded-[32px] shadow-2xl backdrop-blur-xl my-auto">
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 pb-6 border-b border-white/10">
+          <div className="max-w-5xl w-full py-12 px-6 sm:px-10 bg-white dark:bg-gradient-to-b dark:from-[#1c1f2b]/95 dark:to-[#121520]/95 border border-slate-200 dark:border-white/10 rounded-[32px] shadow-2xl backdrop-blur-xl my-auto">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 pb-6 border-b border-slate-200 dark:border-white/10">
               <div>
-                <span className="inline-block px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-400 text-xs font-semibold mb-2">
+                <span className="inline-block px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-600 dark:text-teal-400 text-xs font-semibold mb-2">
                   📊 ACOMS System Dashboard
                 </span>
-                <h2 className="text-3xl font-extrabold text-white tracking-tight">Overview &amp; Metrics</h2>
+                <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Overview &amp; Metrics</h2>
               </div>
               <div className="mt-4 md:mt-0">
                 <button 
                   onClick={() => setView('signup')} 
-                  className="bg-[#7c4dff] hover:bg-[#9670ff] text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-lg shadow-[#7c4dff]/20 cursor-pointer"
+                  className="bg-[#7c4dff] hover:bg-[#6b3fd4] text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-lg shadow-[#7c4dff]/20 cursor-pointer"
                 >
                   Create Account
                 </button>
@@ -233,81 +230,81 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-              <div className="p-6 rounded-2xl bg-white/5 border border-white/5">
-                <p className="text-xs text-slate-400 uppercase font-semibold">Active Sessions</p>
-                <h3 className="text-2xl font-bold text-white mt-1">1,482</h3>
-                <span className="text-xs text-teal-400 mt-2 inline-block">↑ 12% this week</span>
+              <div className="p-6 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 shadow-sm">
+                <p className="text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold">Active Sessions</p>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">1,482</h3>
+                <span className="text-xs text-teal-600 dark:text-teal-400 mt-2 inline-block">↑ 12% this week</span>
               </div>
-              <div className="p-6 rounded-2xl bg-white/5 border border-white/5">
-                <p className="text-xs text-slate-400 uppercase font-semibold">Code Parses</p>
-                <h3 className="text-2xl font-bold text-white mt-1">34,290</h3>
-                <span className="text-xs text-teal-400 mt-2 inline-block">↑ 24% efficiency</span>
+              <div className="p-6 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 shadow-sm">
+                <p className="text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold">Code Parses</p>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">34,290</h3>
+                <span className="text-xs text-teal-600 dark:text-teal-400 mt-2 inline-block">↑ 24% efficiency</span>
               </div>
-              <div className="p-6 rounded-2xl bg-white/5 border border-white/5">
-                <p className="text-xs text-slate-400 uppercase font-semibold">Workspace Uptime</p>
-                <h3 className="text-2xl font-bold text-white mt-1">99.98%</h3>
-                <span className="text-xs text-teal-400 mt-2 inline-block">Operational</span>
+              <div className="p-6 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 shadow-sm">
+                <p className="text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold">Workspace Uptime</p>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">99.98%</h3>
+                <span className="text-xs text-teal-600 dark:text-teal-400 mt-2 inline-block">Operational</span>
               </div>
             </div>
 
-            <div className="p-6 rounded-2xl bg-[#161923] border border-white/5">
-              <h4 className="text-base font-bold text-white mb-2">About ACOMS-AI Infrastructure</h4>
-              <p className="text-sm text-slate-400 leading-relaxed">
+            <div className="p-6 rounded-2xl bg-slate-50 dark:bg-[#161923] border border-slate-200 dark:border-white/5 shadow-sm">
+              <h4 className="text-base font-bold text-slate-900 dark:text-white mb-2">About ACOMS-AI Infrastructure</h4>
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                 ACOMS-AI delivers dedicated containerized AI parsing spaces. Each user profile handles secure historical token encryption, custom context injection, and instant multi-language algorithm compiling.
               </p>
             </div>
           </div>
         )}
 
-        {/* Login & Signup Two-Column Layout */}
+        {/* Login & Signup Two-Column Layout (Responsive Stack on Mobile) */}
         {(view === 'login' || view === 'signup') && (
-          <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+          <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
             
-            {/* Left Column: Brand Panel */}
-            <div className="hidden lg:flex lg:col-span-6 flex-col justify-center p-10 xl:p-14 bg-gradient-to-br from-[#161923] to-[#1c1f2b] border border-white/10 rounded-[32px] relative overflow-hidden shadow-2xl">
+            {/* Left Column: Brand Panel (Visible on Mobile as a top banner, full layout on lg) */}
+            <div className="flex lg:col-span-6 flex-col justify-center p-6 sm:p-10 xl:p-14 bg-white dark:bg-gradient-to-br dark:from-[#161923] dark:to-[#1c1f2b] border border-slate-200 dark:border-white/10 rounded-[32px] relative overflow-hidden shadow-xl dark:shadow-2xl">
               <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
               
-              <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-[#7c4dff]/10 border border-[#7c4dff]/20 text-[#9670ff] text-xs font-semibold w-max mb-6">
+              <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-[#7c4dff]/10 border border-[#7c4dff]/20 text-[#7c4dff] dark:text-[#9670ff] text-xs font-semibold w-max mb-6">
                 <span>ACOMS-AI Developer Network</span>
               </div>
               
-              <h2 className="text-3xl xl:text-5xl font-extrabold tracking-tight text-white mb-5 leading-tight">
+              <h2 className="text-2xl sm:text-3xl xl:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white mb-4 sm:mb-5 leading-tight">
                 {view === 'login' 
                   ? 'Connect with your developer workspace securely.' 
                   : 'Build, test, and scale with intelligent AI assistance.'}
               </h2>
               
-              <p className="text-slate-400 text-base xl:text-lg leading-relaxed mb-8">
+              <p className="text-slate-600 dark:text-slate-400 text-sm sm:text-base xl:text-lg leading-relaxed mb-6 sm:mb-8">
                 ACOMS-AI helps computer science students and engineers manage complex code repositories, evaluate syntax logic, and collaborate seamlessly.
               </p>
 
               <div className="space-y-4">
-                <div className="flex items-start space-x-4 p-4 rounded-2xl bg-white/5 border border-white/5">
-                  <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center text-sm font-bold mt-0.5">✓</div>
+                <div className="flex items-start space-x-4 p-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 shadow-sm">
+                  <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-600 dark:text-teal-400 flex items-center justify-center text-sm font-bold mt-0.5">✓</div>
                   <div>
-                    <h4 className="text-sm font-semibold text-white">Isolated Private Partitions</h4>
-                    <p className="text-xs text-slate-400 mt-0.5">Your personal prompts and custom settings remain encrypted and strictly confidential.</p>
+                    <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Isolated Private Partitions</h4>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">Your personal prompts and custom settings remain encrypted and strictly confidential.</p>
                   </div>
                 </div>
                 
-                <div className="flex items-start space-x-4 p-4 rounded-2xl bg-white/5 border border-white/5">
-                  <div className="w-8 h-8 rounded-xl bg-[#7c4dff]/20 text-[#9670ff] flex items-center justify-center text-sm font-bold mt-0.5">⚡</div>
+                <div className="flex items-start space-x-4 p-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 shadow-sm">
+                  <div className="w-8 h-8 rounded-xl bg-[#7c4dff]/20 text-[#7c4dff] dark:text-[#9670ff] flex items-center justify-center text-sm font-bold mt-0.5">⚡</div>
                   <div>
-                    <h4 className="text-sm font-semibold text-white">Advanced Algorithm Parsing</h4>
-                    <p className="text-xs text-slate-400 mt-0.5">Optimized for complex logic structures, data science models, and software engineering stacks.</p>
+                    <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Advanced Algorithm Parsing</h4>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">Optimized for complex logic structures, data science models, and software engineering stacks.</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Right Column: Authentication Card with Professional Eye Icons */}
+            {/* Right Column: Authentication Card */}
             <div className="col-span-1 lg:col-span-6 flex justify-center">
-              <div className="w-full max-w-[460px] bg-[#1c1f2b]/95 p-8 sm:p-10 rounded-[32px] border border-white/10 shadow-2xl backdrop-blur-xl">
+              <div className="w-full max-w-[460px] bg-white dark:bg-[#1c1f2b]/95 p-6 sm:p-10 rounded-[32px] border border-slate-200 dark:border-white/10 shadow-xl dark:shadow-2xl backdrop-blur-xl transition-colors duration-200">
                 <div className="mb-6">
-                  <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+                  <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 bg-clip-text text-transparent">
                     {view === 'login' ? 'Sign In' : 'Create Account'}
                   </h2>
-                  <p className="text-sm text-slate-400 mt-1">
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                     {view === 'login' ? 'Enter your credentials to access your dashboard' : 'Fill in your details to get started'}
                   </p>
                 </div>
@@ -324,7 +321,7 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
                           value={surname}
                           onChange={(e) => setSurname(e.target.value)}
                           required
-                          className="bg-[#252936] border border-white/5 px-4 py-3.5 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-[#7c4dff] text-sm"
+                          className="bg-slate-50 dark:bg-[#252936] border border-slate-200 dark:border-white/5 px-4 py-3.5 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#7c4dff] text-sm"
                         />
                         <input
                           type="text"
@@ -334,7 +331,7 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
                           value={firstName}
                           onChange={(e) => setFirstName(e.target.value)}
                           required
-                          className="bg-[#252936] border border-white/5 px-4 py-3.5 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-[#7c4dff] text-sm"
+                          className="bg-slate-50 dark:bg-[#252936] border border-slate-200 dark:border-white/5 px-4 py-3.5 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#7c4dff] text-sm"
                         />
                       </div>
                       <input
@@ -345,7 +342,7 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         required
-                        className="bg-[#252936] border border-white/5 px-4 py-3.5 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-[#7c4dff] text-sm w-full"
+                        className="bg-slate-50 dark:bg-[#252936] border border-slate-200 dark:border-white/5 px-4 py-3.5 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#7c4dff] text-sm w-full"
                       />
                     </>
                   )}
@@ -358,10 +355,10 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="bg-[#252936] border border-white/5 px-4 py-3.5 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-[#7c4dff] text-sm w-full"
+                    className="bg-slate-50 dark:bg-[#252936] border border-slate-200 dark:border-white/5 px-4 py-3.5 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#7c4dff] text-sm w-full"
                   />
 
-                  {/* Password Input with Professional Eye Icon Toggle */}
+                  {/* Password Input */}
                   <div className="relative">
                     <input
                       type={showPass ? 'text' : 'password'}
@@ -372,12 +369,12 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       minLength={8}
-                      className="bg-[#252936] border border-white/5 px-4 py-3.5 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-[#7c4dff] text-sm w-full pr-12"
+                      className="bg-slate-50 dark:bg-[#252936] border border-slate-200 dark:border-white/5 px-4 py-3.5 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#7c4dff] text-sm w-full pr-12"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPass(!showPass)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer select-none focus:outline-none"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer select-none focus:outline-none"
                     >
                       {showPass ? (
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -403,12 +400,12 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         required
                         minLength={8}
-                        className="bg-[#252936] border border-white/5 px-4 py-3.5 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-[#7c4dff] text-sm w-full pr-12"
+                        className="bg-slate-50 dark:bg-[#252936] border border-slate-200 dark:border-white/5 px-4 py-3.5 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#7c4dff] text-sm w-full pr-12"
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPass(!showConfirmPass)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer select-none focus:outline-none"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer select-none focus:outline-none"
                       >
                         {showConfirmPass ? (
                           <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -427,7 +424,7 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
                   <button
                     type="submit"
                     disabled={isAuthLoading}
-                    className="w-full bg-[#7c4dff] hover:bg-[#9670ff] text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-[#7c4dff]/30 cursor-pointer mt-2 text-sm"
+                    className="w-full bg-[#7c4dff] hover:bg-[#6b3fd4] text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-[#7c4dff]/30 cursor-pointer mt-2 text-sm"
                   >
                     {isAuthLoading ? 'Please wait...' : view === 'login' ? 'Login' : 'Complete Sign Up'}
                   </button>
@@ -447,7 +444,7 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
                     setView(view === 'login' ? 'signup' : 'login');
                     setShowPass(false);
                   }}
-                  className="text-center text-sm text-slate-400 hover:text-white cursor-pointer mt-4"
+                  className="text-center text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer mt-4"
                 >
                   {view === 'login' ? "New here? Create an account" : 'Already have an account? Login'}
                 </p>
@@ -459,10 +456,10 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
 
         {/* Forgot Password View */}
         {view === 'forgot-password' && (
-          <div className="w-full max-w-[420px] bg-[#1c1f2b]/95 p-8 rounded-[32px] border border-white/10 shadow-2xl backdrop-blur-xl my-auto">
+          <div className="w-full max-w-[420px] bg-white dark:bg-[#1c1f2b]/95 p-8 rounded-[32px] border border-slate-200 dark:border-white/10 shadow-2xl backdrop-blur-xl my-auto transition-colors duration-200">
             <div className="mb-6">
-              <h2 className="text-3xl font-extrabold tracking-tight">Reset Password</h2>
-              <p className="text-sm text-slate-400 mt-1">Enter your registered email to receive a secure recovery link.</p>
+              <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">Reset Password</h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Enter your registered email to receive a secure recovery link.</p>
             </div>
 
             <form onSubmit={handleSendRecoveryEmail} className="space-y-4">
@@ -474,18 +471,18 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
                 value={recoveryEmail}
                 onChange={(e) => setRecoveryEmail(e.target.value)}
                 required
-                className="bg-[#252936] border border-white/5 px-4 py-3.5 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-[#7c4dff] text-sm w-full"
+                className="bg-slate-50 dark:bg-[#252936] border border-slate-200 dark:border-white/5 px-4 py-3.5 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#7c4dff] text-sm w-full"
               />
               <button
                 type="submit"
                 disabled={isAuthLoading}
-                className="w-full bg-[#7c4dff] hover:bg-[#9670ff] text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-[#7c4dff]/30 cursor-pointer text-sm"
+                className="w-full bg-[#7c4dff] hover:bg-[#6b3fd4] text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-[#7c4dff]/30 cursor-pointer text-sm"
               >
                 {isAuthLoading ? 'Sending Link...' : 'Send Recovery Link'}
               </button>
             </form>
 
-            <p onClick={() => setView('login')} className="text-center text-sm text-slate-400 hover:text-white cursor-pointer mt-6">
+            <p onClick={() => setView('login')} className="text-center text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer mt-6">
               Back to Login
             </p>
           </div>
@@ -493,10 +490,10 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
 
         {/* Reset Password View */}
         {view === 'reset-password' && (
-          <div className="w-full max-w-[420px] bg-[#1c1f2b]/95 p-8 rounded-[32px] border border-white/10 shadow-2xl backdrop-blur-xl my-auto">
+          <div className="w-full max-w-[420px] bg-white dark:bg-[#1c1f2b]/95 p-8 rounded-[32px] border border-slate-200 dark:border-white/10 shadow-2xl backdrop-blur-xl my-auto transition-colors duration-200">
             <div className="mb-6">
-              <h2 className="text-3xl font-extrabold tracking-tight">Set New Password</h2>
-              <p className="text-sm text-slate-400 mt-1">Enter your new secure password below.</p>
+              <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">Set New Password</h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Enter your new secure password below.</p>
             </div>
 
             <form onSubmit={handleCompleteReset} className="space-y-4">
@@ -510,12 +507,12 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
                   minLength={8}
-                  className="bg-[#252936] border border-white/5 px-4 py-3.5 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-[#7c4dff] text-sm w-full pr-12"
+                  className="bg-slate-50 dark:bg-[#252936] border border-slate-200 dark:border-white/5 px-4 py-3.5 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#7c4dff] text-sm w-full pr-12"
                 />
                 <button
                   type="button"
                   onClick={() => setShowNewPass(!showNewPass)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer select-none focus:outline-none"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer select-none focus:outline-none"
                 >
                   {showNewPass ? (
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -532,13 +529,13 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
               <button
                 type="submit"
                 disabled={isAuthLoading}
-                className="w-full bg-[#7c4dff] hover:bg-[#9670ff] text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-[#7c4dff]/30 cursor-pointer text-sm"
+                className="w-full bg-[#7c4dff] hover:bg-[#6b3fd4] text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-[#7c4dff]/30 cursor-pointer text-sm"
               >
                 {isAuthLoading ? 'Updating...' : 'Reset Password'}
               </button>
             </form>
 
-            <p onClick={() => setView('login')} className="text-center text-sm text-slate-400 hover:text-white cursor-pointer mt-6">
+            <p onClick={() => setView('login')} className="text-center text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer mt-6">
               Cancel &amp; Return to Login
             </p>
           </div>

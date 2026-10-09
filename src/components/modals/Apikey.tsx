@@ -1,6 +1,5 @@
 import { IonIcon } from "@ionic/react";
 import { informationCircleOutline, closeCircleOutline } from "ionicons/icons";
-import { useAuth } from "../../store/store";
 import { useState } from "react";
 import { motion } from "framer-motion";
 
@@ -13,11 +12,15 @@ const apiKeyLength = 40;
 
 export default function Apikey() {
   const [userapikey, setUserApikey] = useState("");
-  const { setApiKey } = useAuth();
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setApiKey(userapikey);
+    localStorage.setItem("apiKey", userapikey);
+    alert("API key saved successfully!");
+  }
+
+  function handleClose() {
+    localStorage.setItem("apiKey", "sk-");
   }
 
   return (
@@ -26,19 +29,20 @@ export default function Apikey() {
       initial="hidden"
       animate="visible"
       exit="exit"
-      className="dark:bg-gray-700 text-gray-700 dark:text-gray-300 border bg-white border-blue-400 max-w-xl w-full p-3 rounded-md mx-2 md:mx-0"
+      className="bg-[#1c1f2b] text-slate-300 border border-white/10 max-w-xl w-full p-6 rounded-2xl mx-2 md:mx-0 shadow-2xl font-['Plus_Jakarta_Sans',sans-serif]"
     >
-      <div className=" text-right">
+      <div className="text-right">
         <button
           type="button"
-          className=" text-xl"
-          onClick={() => setApiKey("sk-")}
+          className="text-xl text-slate-400 hover:text-white transition-colors cursor-pointer"
+          onClick={handleClose}
+          title="Close"
         >
           <IonIcon icon={closeCircleOutline} />
         </button>
       </div>
-      <h2 className="text-xl font-medium   text-center my-2">
-        Enter your apikey
+      <h2 className="text-xl font-semibold text-center my-2 text-slate-200">
+        Enter your API key
       </h2>
       <form onSubmit={handleSubmit}>
         <input
@@ -46,23 +50,23 @@ export default function Apikey() {
           placeholder="sk-################################"
           onChange={(e) => setUserApikey(e.target.value)}
           autoFocus
-          className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5  dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white"
+          className="bg-[#161923] border border-white/10 text-slate-200 text-sm rounded-xl focus:ring-1 focus:ring-[#7c4dff] focus:border-[#7c4dff] block w-full p-3 outline-none placeholder:text-slate-600 transition-all"
         />
-        <div className=" flex items-center mt-4">
-          <span className=" flex items-center ">
+        <div className="flex items-center mt-4 text-slate-400">
+          <span className="flex items-center text-base text-[#9670ff]">
             <IonIcon icon={informationCircleOutline} />
           </span>
-          <span className="ml-2 text-sm font-medium">
-            Your api key is stored in your own browser
+          <span className="ml-2 text-xs font-medium text-slate-400">
+            Your API key is stored securely in your browser's local storage.
           </span>
         </div>
-        <div className=" text-center">
+        <div className="text-center mt-5">
           <button
             type="submit"
             disabled={userapikey.length < apiKeyLength}
-            className="mt-4 py-2.5 disabled:cursor-not-allowed disabled:bg-white  px-5 text-sm font-medium disabled:text-gray-900 focus:outline-none bg-green-500 text-white rounded-lg border border-gray-200   focus:z-10 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700"
+            className="w-full py-3 px-5 text-sm font-semibold text-white bg-[#7c4dff] hover:bg-[#6b3fd4] rounded-xl transition-all shadow-md shadow-[#7c4dff]/20 disabled:cursor-not-allowed disabled:bg-[#252936] disabled:text-slate-500 disabled:shadow-none cursor-pointer"
           >
-            Save
+            Save API Key
           </button>
         </div>
       </form>

@@ -1,13 +1,13 @@
 import { IonIcon } from "@ionic/react";
 import Avatar from "../Avatar/Avatar";
-import { createOutline, pencilOutline, checkmark } from "ionicons/icons";
+import { pencilOutline, createOutline, checkmark } from "ionicons/icons";
 import { useAuth } from "../../store/store";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import classNames from "classnames";
-import { account, storage, ID, Permission, Role } from "../../appwriteConfig"; // Added Permission and Role
+import { account, storage, ID, Permission, Role } from "../../appwriteConfig";
 
-const varinats = {
+const variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1 },
   exit: { opacity: 0 },
@@ -29,28 +29,24 @@ export default function ProfileTab({ visible }: { visible: boolean }) {
       const file = e.target.files[0];
       
       try {
-        // 1. Upload file to your 'profiles' Appwrite Storage Bucket with explicit permissions
-       const uploadedFile = await storage.createFile(
-  "6ac3940c002ffc7b4c55", 
-  ID.unique(), 
-  file,
-  [
-    Permission.read(Role.any()),     
-    Permission.update(Role.users()), 
-    Permission.delete(Role.users())  
-  ]
-);
+        const uploadedFile = await storage.createFile(
+          "6ac3940c002ffc7b4c55", 
+          ID.unique(), 
+          file,
+          [
+            Permission.read(Role.any()),    
+            Permission.update(Role.users()), 
+            Permission.delete(Role.users())  
+          ]
+        );
 
-        // 2. Get the public view URL for the uploaded file
         const fileUrl = storage.getFileView(
           "6ac3940c002ffc7b4c55",
           uploadedFile.$id
         ).toString();
 
-        // 3. Save the URL into Appwrite Account Preferences so it persists across logouts
         await account.updatePrefs({ avatar: fileUrl });
 
-        // 4. Update local global state immediately
         setUser({
           avatar: fileUrl,
           name,
@@ -86,71 +82,77 @@ export default function ProfileTab({ visible }: { visible: boolean }) {
 
   return (
     <motion.div
-      variants={varinats}
+      variants={variants}
       initial="hidden"
       animate="visible"
       exit="exit"
-      className={classNames("p-2", { hidden: !visible })}
+      className={classNames("p-4 font-['Plus_Jakarta_Sans',sans-serif] transition-colors duration-200", { hidden: !visible })}
     >
-      <div className="profile-pic group flex items-center justify-center relative">
+      <div className="profile-pic group flex items-center justify-center relative mb-6">
         <input
           type="file"
           name="pic"
           accept="image/*"
-          className=" hidden"
+          className="hidden"
           id="pic-file"
           onChange={handlePicChange}
         />
-        <Avatar
-          className="avatar  h-20 w-20 ring-2 rounded-full object-cover ring-gray-300 p-1 dark:ring-gray-500"
-          src={avatar}
-        >
-          <button
-            type="button"
-            onClick={() => {
-              const fileInput = document.getElementById(
-                "pic-file"
-              ) as HTMLInputElement;
-              fileInput.click();
-            }}
-            className="invisible absolute z-10 top-0 left-0 right-0 bottom-0 group-hover:visible  transition rounded-full  bg-gray-700 bg-opacity-50  flex items-center justify-center"
+        <div className="relative rounded-full p-1 bg-slate-100 dark:bg-[#252936] border border-slate-200 dark:border-white/10 shadow-lg">
+          <Avatar
+            className="avatar h-24 w-24 rounded-full object-cover"
+            src={avatar}
           >
-            <IonIcon icon={pencilOutline} className="text-xl text-gray-100" />
-          </button>
-        </Avatar>
+            <button
+              type="button"
+              onClick={() => {
+                const fileInput = document.getElementById(
+                  "pic-file"
+                ) as HTMLInputElement;
+                fileInput.click();
+              }}
+              className="invisible absolute z-10 top-0 left-0 right-0 bottom-0 group-hover:visible transition-all duration-200 rounded-full bg-slate-900/60 dark:bg-[#0f111a]/70 backdrop-blur-xs flex items-center justify-center cursor-pointer"
+              title="Change profile picture"
+            >
+              <IonIcon icon={pencilOutline} className="text-xl text-white" />
+            </button>
+          </Avatar>
+        </div>
       </div>
-      <div className="my-4 ">
+
+      <div className="text-center">
         {!editName && (
-          <div className="flex items-center justify-center text-xl">
-            <span className="mr-2 ">{myname}</span>
+          <div className="flex items-center justify-center gap-2 text-lg font-semibold text-slate-800 dark:text-slate-200">
+            <span>{myname}</span>
             <button
               type="button"
               title="Edit name"
-              className="flex items-center"
+              className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer p-1 rounded-lg bg-slate-100 dark:bg-[#252936] border border-slate-200 dark:border-white/10 text-sm shadow-sm"
               onClick={() => setEditName(true)}
             >
-              <IonIcon icon={createOutline} className=" dark:text-gray-100" />
+              <IonIcon icon={createOutline} />
             </button>
           </div>
         )}
         {editName && (
-          <div className="flex items-center justify-center">
+          <div className="flex items-center justify-center gap-2 max-w-xs mx-auto">
             <input
               type="text"
               id="name"
               value={myname}
               onChange={(e) => setMyName(e.target.value)}
-              className="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block  py-2.5 px-1.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+              className="bg-slate-50 dark:bg-[#161923] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-slate-200 text-sm rounded-xl focus:ring-1 focus:ring-[#7c4dff] focus:border-[#7c4dff] block py-2.5 px-3 outline-none w-full"
               placeholder={myname}
               required
+              autoFocus
             />
             <button
               type="button"
-              className="flex items-center ml-2 text-xl"
+              className="flex items-center justify-center p-2.5 bg-[#7c4dff] hover:bg-[#6b3fd4] text-white rounded-xl transition-all shadow-md shadow-[#7c4dff]/20 cursor-pointer disabled:opacity-50"
               onClick={handleUpdateName}
               disabled={loading}
+              title="Save name"
             >
-              <IonIcon icon={checkmark} />
+              <IonIcon icon={checkmark} className="text-lg" />
             </button>
           </div>
         )}

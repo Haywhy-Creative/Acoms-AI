@@ -18,7 +18,7 @@ export default function UserQuery() {
       e.preventDefault();
       if (formRef.current) {
         formRef.current.requestSubmit();
-        target.style.height = "30px";
+        target.style.height = "32px";
       }
     }
   }
@@ -32,47 +32,51 @@ export default function UserQuery() {
 
   async function handleOnSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (query) {
+    if (query.trim()) {
       addChat(createMessage("user", query, "text"));
       addChat(
         createMessage(
           "assistant",
           "",
-          selectedModal.startsWith("dall-e") ? "image_url" : "text"
+          selectedModal?.startsWith("dall-e") ? "image_url" : "text"
         )
       );
       setQuery("");
-      if (textareaRef.current) textareaRef.current.style.height = "30px";
+      if (textareaRef.current) textareaRef.current.style.height = "32px";
     }
   }
 
   return (
     <form
-      className="input shadow-md dark:bg-[#40414f] bg-white  dark:border-white border-gray-700 border-2 flex items-center   rounded-md"
+      className="input bg-white dark:bg-[#1c1f2b] border border-slate-200 dark:border-white/10 rounded-2xl shadow-xl dark:shadow-2xl flex items-center p-2.5 font-['Plus_Jakarta_Sans',sans-serif] transition-all focus-within:border-[#7c4dff]/50 focus-within:ring-1 focus-within:ring-[#7c4dff]/30"
       onSubmit={handleOnSubmit}
       ref={formRef}
     >
-      <div className="w-11/12 p-2">
+      <div className="flex-1 px-2">
         <textarea
           name="query"
           ref={textareaRef}
-          className="h-6 px-2  w-full outline-none resize-none dark:bg-transparent dark:text-white placeholder:font-bold"
-          placeholder="Send a message"
+          className="min-h-[32px] max-h-36 w-full outline-none resize-none bg-transparent text-slate-900 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm py-1.5"
+          placeholder="Send a message..."
           onKeyDown={handleOnKeyDown}
           onChange={handleOnInputChange}
           value={query}
           autoFocus
         ></textarea>
       </div>
-      <div className=" w-1/12 text-center mx-2">
+      <div className="flex items-center justify-center pl-2">
         <button
           type="submit"
+          disabled={!query.trim()}
           className={classNames(
-            " text-center  text-gray-600 dark:text-white transition inline-flex items-center justify-center py-2 px-2 rounded-md",
-            { "bg-green-500 dark:text-gray-200 text-white": query }
+            "transition-all inline-flex items-center justify-center p-2.5 rounded-xl cursor-pointer disabled:cursor-not-allowed",
+            query.trim()
+              ? "bg-[#7c4dff] text-white hover:bg-[#6b3fd4] shadow-md shadow-[#7c4dff]/20"
+              : "bg-slate-100 dark:bg-[#252936] text-slate-400 dark:text-slate-500"
           )}
+          title="Send message"
         >
-          <IonIcon icon={query ? send : sendOutline} />
+          <IonIcon icon={query.trim() ? send : sendOutline} className="text-lg" />
         </button>
       </div>
     </form>

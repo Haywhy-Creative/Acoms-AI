@@ -50,21 +50,24 @@ export default function ChatRef({
   return (
     <div
       className={classNames(
-        "btn-wrap flex items-center w-full p-1 rounded-md text-xl font-bold  hover:bg-[#40414f]",
-        { "bg-[#40414f]": isSelected }
+        "btn-wrap flex items-center w-full p-1.5 rounded-xl text-sm font-medium transition-all cursor-pointer group text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white",
+        {
+          "bg-[#7c4dff]/15 text-slate-900 dark:text-white border border-[#7c4dff]/30 shadow-sm":
+            isSelected,
+        }
       )}
     >
       {!isTitleEditeble && (
         <button
-          className="  py-2  w-3/4 flex  items-center flex-grow  transition p-2"
+          className="py-1.5 w-3/4 flex items-center flex-grow transition text-left cursor-pointer"
           onClick={() => viewSelectedChat(chat.id)}
           title={chat.title}
         >
-          <span className="mr-2  flex">
+          <span className="mr-2.5 flex text-base text-[#7c4dff] dark:text-[#9670ff]">
             <IonIcon icon={chatboxOutline} />
           </span>
 
-          <span className="text-sm truncate capitalize">
+          <span className="truncate capitalize text-xs sm:text-sm">
             {editTitle ? editTitle : chat.title}
           </span>
         </button>
@@ -73,38 +76,50 @@ export default function ChatRef({
         <input
           type="text"
           value={editTitle}
-          className=" bg-inherit border border-blue-400 w-4/5 ml-2 p-1 outline-none"
+          className="bg-slate-100 dark:bg-[#252936] text-slate-900 dark:text-white border border-[#7c4dff] w-4/5 ml-1 p-1.5 rounded-lg outline-none text-xs"
           autoFocus
           onChange={(e) => setEditTitle(e.target.value)}
         />
       )}
       {isSelected && !isEditingTitle && (
-        <div className=" inline-flex w-1/4 mx-2  items-center justify-between">
+        <div className="inline-flex w-1/4 mx-1 items-center justify-end space-x-1.5">
           <button
-            className={classNames(" mr-2 flex hover:text-blue-300")}
+            className={classNames(
+              "p-1 flex text-slate-500 dark:text-slate-400 hover:text-[#7c4dff] dark:hover:text-[#9670ff] transition-colors"
+            )}
             onClick={() => setIsEditingTitle(true)}
+            title="Edit title"
           >
             <IonIcon icon={pencilOutline} />
           </button>
           <button
-            className={classNames("  flex hover:text-red-300")}
+            className={classNames(
+              "p-1 flex text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+            )}
             onClick={() => setConfirmDeleteChat(true)}
+            title="Delete chat"
           >
             <IonIcon icon={trashOutline} />
           </button>
         </div>
       )}
       {isSelected && isEditingTitle && (
-        <div className=" inline-flex w-1/5 mx-2  items-center justify-between">
+        <div className="inline-flex w-1/5 mx-1 items-center justify-end space-x-1.5">
           <button
-            className={classNames(" mr-2 flex hover:text-blue-300")}
+            className={classNames(
+              "p-1 flex text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300 transition-colors"
+            )}
             onClick={() => handleEditTitle(chat.id, editTitle)}
+            title="Confirm"
           >
             <IonIcon icon={checkmarkOutline} />
           </button>
           <button
-            className={classNames("  flex hover:text-red-300")}
+            className={classNames(
+              "p-1 flex text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+            )}
             onClick={() => setIsEditingTitle(false)}
+            title="Cancel"
           >
             <IonIcon icon={closeOutline} />
           </button>
@@ -116,7 +131,7 @@ export default function ChatRef({
             onDelete={() => handleDeleteChats(chat.id)}
             onCancel={() => setConfirmDeleteChat(false)}
           >
-            <p className="text-sm">
+            <p className="text-slate-600 dark:text-slate-300 text-sm">
               Are you sure you want to delete this chat? This action cannot be
               undone.
             </p>

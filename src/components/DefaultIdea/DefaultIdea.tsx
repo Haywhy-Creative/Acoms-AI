@@ -12,30 +12,33 @@ export default function DefaultIdea({
   myclassNames?: string;
 }) {
   const addChat = useChat((state) => state.addChat);
+  
   return (
     <div
       className={classNames(
-        "md:grid md:grid-cols-2 md:grid-rows-1 md:items-stretch md:gap-2 ",
+        "grid grid-cols-1 md:grid-cols-2 gap-3 w-full font-['Plus_Jakarta_Sans',sans-serif]",
         myclassNames
       )}
     >
       {ideas.map((i) => (
         <button
           key={i.idea}
-          className="border inline-flex dark:border-gray-500 border-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 mb-2  w-full text-left p-2 group rounded-md  shadow flex-1 md:flex-row md:items-center"
+          className="border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1c1f2b] hover:bg-slate-50 dark:hover:bg-[#252936] hover:border-[#7c4dff]/40 transition-all duration-200 w-full text-left p-4 group rounded-2xl shadow-sm dark:shadow-lg flex items-center justify-between cursor-pointer"
           onClick={() => {
             addChat(createMessage("user", i.moreContext, "text"));
             addChat(createMessage("assistant", "", "text"));
           }}
         >
-          <div className=" self-stretch w-11/12">
-            <h3 className=" font-bold  dark:text-gray-300 text-gray-700">
+          <div className="flex-1 pr-3">
+            <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-200 group-hover:text-[#7c4dff] dark:group-hover:text-white transition-colors">
               {i.idea}
             </h3>
-            <p className=" dark:text-gray-400 text-gray-600">{i.moreContext}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-1">
+              {i.moreContext}
+            </p>
           </div>
 
-          <div className="btn text-gray-600 dark:text-gray-200 text-lg invisible duration-75 transition-all group-hover:visible ">
+          <div className="text-slate-400 dark:text-slate-400 group-hover:text-[#7c4dff] dark:group-hover:text-[#9670ff] text-lg transition-transform group-hover:scale-110 flex items-center justify-center p-2 rounded-xl bg-slate-100 dark:bg-[#161923] border border-slate-200 dark:border-white/5 shadow-xs">
             <IonIcon icon={sendOutline} />
           </div>
         </button>

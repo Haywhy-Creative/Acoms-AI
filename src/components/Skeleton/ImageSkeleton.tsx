@@ -1,8 +1,8 @@
 export default function ImageSkeleton() {
   return (
-    <div className="flex items-center justify-center h-full  bg-gray-300 rounded w-full dark:bg-gray-700 animate-pulse">
+    <div className="flex items-center justify-center h-full bg-[#1c1f2b] border border-white/10 rounded-xl w-full animate-pulse font-['Plus_Jakarta_Sans',sans-serif]">
       <svg
-        className="w-10 h-10 text-gray-200 dark:text-gray-600"
+        className="w-12 h-12 text-[#7c4dff]/40"
         aria-hidden="true"
         xmlns="http://www.w3.org/2000/svg"
         fill="currentColor"

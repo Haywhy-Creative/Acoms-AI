@@ -1,39 +1,41 @@
 import { IonIcon } from "@ionic/react";
-import { shareOutline, informationCircleOutline } from "ionicons/icons";
+import { informationCircleOutline } from "ionicons/icons";
 import { useSettings } from "../../store/store";
 
 export default function Header() {
-  const [model, systemMessage, useSystemMessageForAllChats] = useSettings(
+  const [systemMessage, useSystemMessageForAllChats] = useSettings(
     (state) => [
-      state.settings.selectedModal,
       state.settings.systemMessage,
       state.settings.useSystemMessageForAllChats,
     ]
   );
+
   return (
-    <header className=" text-center my-2 text-sm dark:text-gray-300 border-b dark:border-none dark:shadow-md py-2 flex items-center justify-between px-2">
-      <div className="md:block hidden"></div>
-      <div className=" flex items-center relative">
-        <span>Using ({model.toLocaleUpperCase()})</span>
+    <header className="bg-white dark:bg-[#161923] text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-white/10 py-3 px-4 grid grid-cols-3 items-center font-['Plus_Jakarta_Sans',sans-serif] relative z-10 transition-colors duration-200">
+      {/* Left Section: System Instructions Info */}
+      <div className="flex items-center justify-start">
         {useSystemMessageForAllChats && (
-          <span className=" flex text-xl ml-2 group cursor-pointer">
+          <span className="flex text-lg group cursor-pointer text-[#7c4dff] dark:text-[#9670ff] hover:text-slate-900 dark:hover:text-white transition-colors relative">
             <IonIcon icon={informationCircleOutline} />
-            <span className=" absolute z-10 left-0 w-[calc(100%+10rem)] top-[calc(100%+1rem)] text-sm bg-gray-900 text-white p-2  rounded-md invisible  pointer-events-none group-hover:visible group-hover:pointer-events-auto transition">
-              <span className=" block underline text-teal-600">
-                <strong>System message</strong>
+            <span className="absolute z-30 left-0 w-72 top-[calc(100%+0.5rem)] text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-[#1c1f2b] border border-slate-200 dark:border-white/10 p-3 rounded-xl shadow-2xl invisible pointer-events-none group-hover:visible group-hover:pointer-events-auto transition-all text-left">
+              <span className="block font-semibold text-[#7c4dff] dark:text-[#9670ff] mb-1">
+                Custom System Instructions Active
               </span>
-              <span className=" text-gray-400 block text-left">
-                {systemMessage}
+              <span className="text-slate-500 dark:text-slate-400 block max-h-32 overflow-y-auto">
+                {systemMessage || "No custom message defined."}
               </span>
             </span>
           </span>
         )}
       </div>
-      <div className="">
-        <button className=" text-xl">
-          <IonIcon icon={shareOutline} />
-        </button>
+
+      {/* Center Section: Workspace Title */}
+      <div className="text-xs text-slate-500 dark:text-slate-400 font-medium text-center truncate">
+        ACOMS-AI Workspace
       </div>
+
+      {/* Right Section: Reserved for layout actions */}
+      <div className="flex items-center justify-end gap-2"></div>
     </header>
   );
 }

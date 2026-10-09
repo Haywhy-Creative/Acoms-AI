@@ -16,7 +16,7 @@ const variants = {
 
 export default function Modal(props: Props) {
   const modal_cn = classNames(
-    "modal font-Bungee fixed top-0 left-0 right-0 bottom-0 bg-gray-500 dark:bg-gray-500  bg-opacity-50 dark:bg-opacity-50  z-50 flex items-center justify-center",
+    "modal font-['Plus_Jakarta_Sans',sans-serif] fixed top-0 left-0 right-0 bottom-0 bg-[#0f111a]/80 backdrop-blur-md z-50 flex items-center justify-center p-4",
     props.className
   );
 

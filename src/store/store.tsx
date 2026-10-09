@@ -370,21 +370,39 @@ selectedModal: "openai/gpt-oss-120b",
   shallow
 );
 const useTheme = create<ThemeType>()(
-  persist(
-    (set) => ({
-      theme: "dark",
-      setTheme: (theme) => {
-        set(
-          produce((state) => {
-            state.theme = theme;
-          })
-        );
-      },
-    }),
-    {
-      name: "theme",
-    }
-  )
+  persist(
+    (set) => ({
+      theme: "dark",
+      setTheme: (theme) => {
+        if (typeof window !== "undefined") {
+          const root = document.documentElement;
+          if (theme === "dark") {
+            root.classList.add("dark");
+          } else {
+            root.classList.remove("dark");
+          }
+        }
+        set(
+          produce((state) => {
+            state.theme = theme;
+          })
+        );
+      },
+    }),
+    {
+      name: "theme",
+      onRehydrateStorage: () => (state) => {
+        if (state && typeof window !== "undefined") {
+          const root = document.documentElement;
+          if (state.theme === "dark") {
+            root.classList.add("dark");
+          } else {
+            root.classList.remove("dark");
+          }
+        }
+      },
+    }
+  )
 );
 export const months = [
   "Januray",
