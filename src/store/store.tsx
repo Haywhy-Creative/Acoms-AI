@@ -1,3 +1,6 @@
+import { db } from '../appwriteConfig';
+import { ID, Query } from 'appwrite';
+
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { createWithEqualityFn } from "zustand/traditional";
@@ -29,7 +32,7 @@ export interface ModalPermissionType {
   allow_search_indices: boolean;
   allow_view: boolean;
   allow_fine_tuning: boolean;
-  organization: string;
+ organization: string;
   group: null;
   is_blocking: boolean;
 }
@@ -107,147 +110,330 @@ const getCurrentUserId = () => {
     return "guest";
   }
 };
+const DATABASE_ID = import.meta.env.VITE_APPWRITE_DB_ID;
+const COLLECTION_ID = import.meta.env.VITE_APPWRITE_TABLE;
 export const useChat = create<ChatType>((set, get) => ({
-  userId: "guest",
-  chats: [],
-  chatHistory: [],
-  // 🚀 TaskMaster Partition: Strictly load only this user's sandboxed history
-  loadUserHistory: (userId: string) => {
-    const activeUserId = userId && userId.trim() !== "" ? userId : "guest";
-    const historyKey = `chatHistory_${activeUserId}`;
-    const stored = localStorage.getItem(historyKey);
-    set(
-      produce((state: ChatType) => {
-        state.userId = activeUserId;
-        // Load only this user's history array, or empty array if none exists
-        state.chatHistory = stored ? JSON.parse(stored) : [];
-        state.chats = []; // Flush active chat window to prevent data bleed
-      })
-    );
-  },
-  addChat: (chat, index) => {
-    set(
-      produce((state: ChatType) => {
-        if (index || index === 0) state.chats[index] = chat;
-        else {
-          state.chats.push(chat);
-        }
-      })
-    );
-    if (chat.role === "assistant" && chat.content) {
-      get().saveChats();
-    }
-  },
-  editChatMessage: (chat, updateIndex) => {
-    set(
-      produce((state: ChatType) => {
-        state.chats[updateIndex].content = chat;
-      })
-    );
-  },
-  addNewChat: () => {
-    set(
-      produce((state: ChatType) => {
-        state.chats = []; // Clear active conversation window for a fresh chat box
-      })
-    );
-  },
-  saveChats: () => {
-    if (!get().chats || get().chats.length === 0) return;
-    let chat_id = get().chats[0].id;
-    // 🔒 TaskMaster Partition: Bind save strictly to active store userId
-    const userId = get().userId || "guest";
-    const chatKey = `${userId}_${chat_id}`;
-    const historyKey = `chatHistory_${userId}`;
-    let title;
-    if (localStorage.getItem(chatKey)) {
-      const data = JSON.parse(localStorage.getItem(chatKey) ?? "{}");
-      if (data.isTitleEdited) {
-        title = data.title;
-      }
-    }
-    const data = {
-      id: chat_id,
-      createdAt: new Date().toISOString(),
-      chats: get().chats,
-      title: title ? title : get().chats[0].content,
-      isTitleEdited: Boolean(title),
-    };
-    // Save chat content under user-namespaced key (e.g., userA_chatId)
-    localStorage.setItem(chatKey, JSON.stringify(data));
-    const currentHistory = get().chatHistory;
-    if (currentHistory.includes(chat_id)) return;
-    const updatedHistory = [...currentHistory, chat_id];
-    // Save history array under user-namespaced key (e.g., chatHistory_userA)
-    localStorage.setItem(historyKey, JSON.stringify(updatedHistory));
-    set(
-      produce((state: ChatType) => {
-        if (!state.chatHistory.includes(chat_id)) {
-          state.chatHistory.push(chat_id);
-        }
-      })
-    );
-  },
-  viewSelectedChat: (chatId) => {
-    const userId = get().userId;
-    const chatKey = `${userId}_${chatId}`;
-    set(
-      produce((state: ChatType) => {
-        const raw = localStorage.getItem(chatKey);
-        if (!raw) return;
-        state.chats = JSON.parse(raw)?.chats ?? [];
-      })
-    );
-  },
-  resetChatAt: (index) => {
-    set(
-      produce((state: ChatType) => {
-        state.chats[index].content = "";
-      })
-    );
-  },
-  handleDeleteChats: (chatid) => {
-    const userId = get().userId;
-    const chatKey = `${userId}_${chatid}`;
-    const historyKey = `chatHistory_${userId}`;
-    set(
-      produce((state: ChatType) => {
-        state.chatHistory = state.chatHistory.filter((id) => id !== chatid);
-        state.chats = [];
-        localStorage.removeItem(chatKey);
-        localStorage.setItem(historyKey, JSON.stringify(state.chatHistory));
-      })
-    );
-  },
-  editChatsTitle: (id, title) => {
-    const userId = get().userId;
-    const chatKey = `${userId}_${id}`;
-    set(
-      produce((state: ChatType) => {
-        const chatStr = localStorage.getItem(chatKey);
-        if (!chatStr) return;
-        const chat = JSON.parse(chatStr);
-        chat.title = title;
-        chat.isTitleEdited = true;
-        localStorage.setItem(chatKey, JSON.stringify(chat));
-      })
-    );
-  },
-  clearAllChats: () => {
-    const userId = get().userId;
-    const historyKey = `chatHistory_${userId}`;
-    set(
-      produce((state: ChatType) => {
-        state.chatHistory.forEach((id) => {
-          localStorage.removeItem(`${userId}_${id}`);
-        });
-        state.chats = [];
-        state.chatHistory = [];
-        localStorage.removeItem(historyKey);
-      })
-    );
-  },
+  userId: "guest",
+  chats: [],
+  chatHistory: [],
+
+  // 🚀 Load user chat history from Appwrite Cloud
+  loadUserHistory: async (userId: string) => {
+    const activeUserId = userId && userId.trim() !== "" ? userId : "guest";
+    const historyKey = `chatHistory_${activeUserId}`;
+    
+    // 1. Instantly set local cache state first to avoid UI flicker
+    const stored = localStorage.getItem(historyKey);
+    set(
+      produce((state: ChatType) => {
+        state.userId = activeUserId;
+        state.chatHistory = stored ? JSON.parse(stored) : [];
+        state.chats = [];
+      })
+    );
+
+    // 2. Fetch remote documents from Appwrite if authenticated
+    if (activeUserId !== "guest") {
+      try {
+        const response = await db.listDocuments(
+          DATABASE_ID,
+          COLLECTION_ID,
+          [Query.equal('userId', activeUserId)]
+        );
+
+        // Fixed TypeScript type casting for string[]
+        const remoteHistory = Array.from(
+          new Set(response.documents.map((doc: any) => (doc.chatId || doc.$id) as string))
+        ) as string[];
+
+        set(
+          produce((state: ChatType) => {
+            state.chatHistory = remoteHistory;
+          })
+        );
+
+        localStorage.setItem(historyKey, JSON.stringify(remoteHistory));
+      } catch (error) {
+        console.error("Appwrite history fetch failed, relying on local cache:", error);
+      }
+    }
+  },
+
+  addChat: (chat, index) => {
+    set(
+      produce((state: ChatType) => {
+        if (index || index === 0) state.chats[index] = chat;
+        else {
+          state.chats.push(chat);
+        }
+      })
+    );
+    if (chat.role === "assistant" && chat.content) {
+      get().saveChats();
+    }
+  },
+
+  editChatMessage: (chat, updateIndex) => {
+    set(
+      produce((state: ChatType) => {
+        state.chats[updateIndex].content = chat;
+      })
+    );
+  },
+
+  addNewChat: () => {
+    set(
+      produce((state: ChatType) => {
+        state.chats = []; // Clear active conversation window
+      })
+    );
+  },
+
+  // ☁️ Save current conversation thread to Appwrite and localStorage
+ // ☁️ Save current conversation thread to Appwrite and localStorage
+saveChats: async () => {
+  if (!get().chats || get().chats.length === 0) return;
+
+  // 🛡️ Safely check if the first chat object exists, otherwise generate a new ID
+  let chat_id = get().chats[0]?.id || ID.unique();
+  const userId = get().userId || "guest";
+  const chatKey = `${userId}_${chat_id}`;
+  const historyKey = `chatHistory_${userId}`;
+  
+  let title;
+  if (localStorage.getItem(chatKey)) {
+    try {
+      const localData = JSON.parse(localStorage.getItem(chatKey) ?? "{}");
+      if (localData.isTitleEdited) {
+        title = localData.title;
+      }
+    } catch (e) {
+      console.warn("Failed to parse local storage chat data:", e);
+    }
+  }
+  
+  // Safe extraction for fallback title
+  const computedTitle = title 
+    ? title 
+    : (get().chats[0]?.content?.slice(0, 30) || "New Conversation");
+
+  // Save locally
+  const data = {
+    id: chat_id,
+    createdAt: new Date().toISOString(),
+    chats: get().chats,
+    title: computedTitle,
+    isTitleEdited: Boolean(title),
+  };
+
+  localStorage.setItem(chatKey, JSON.stringify(data));
+
+  const currentHistory = get().chatHistory;
+  if (!currentHistory.includes(chat_id)) {
+    const updatedHistory = [...currentHistory, chat_id];
+    localStorage.setItem(historyKey, JSON.stringify(updatedHistory));
+    
+    set(
+      produce((state: ChatType) => {
+        if (!state.chatHistory.includes(chat_id)) {
+          state.chatHistory.push(chat_id);
+        }
+      })
+    );
+  }
+
+  // ☁️ Appwrite Cloud Persistence
+  if (userId !== "guest") {
+    try {
+      // 1. Safely handle string payload size limit (max ~60,000 chars)
+      const rawContent = JSON.stringify(get().chats);
+      const safeContent = rawContent.length > 60000 
+        ? JSON.stringify(get().chats.slice(-15)) // Preserve last 15 messages if thread is long
+        : rawContent;
+
+      const payload = {
+        userId: userId,
+        chatId: chat_id,
+        role: get().chats[get().chats.length - 1]?.role || "user",
+        content: safeContent,
+        title: computedTitle,
+        timestamp: new Date().toISOString(),
+      };
+
+      // 2. Check if this conversation document already exists in Appwrite
+      const existingDocs = await db.listDocuments(
+        DATABASE_ID,
+        COLLECTION_ID,
+        [Query.equal("chatId", chat_id)]
+      );
+
+      if (existingDocs.documents.length > 0) {
+        // Update existing row
+        const docId = existingDocs.documents[0].$id;
+        await db.updateDocument(
+          DATABASE_ID,
+          COLLECTION_ID,
+          docId,
+          payload
+        );
+        console.log("✅ Successfully updated conversation in Appwrite Cloud");
+      } else {
+        // Create new row
+        await db.createDocument(
+          DATABASE_ID,
+          COLLECTION_ID,
+          ID.unique(),
+          payload
+        );
+        console.log("✅ Successfully created conversation in Appwrite Cloud");
+      }
+    } catch (err) {
+      console.error("Failed to sync chat to Appwrite cloud:", err);
+    }
+  }
+},
+
+  // 🔍 View a selected conversation
+  viewSelectedChat: async (chatId) => {
+    const userId = get().userId;
+    const chatKey = `${userId}_${chatId}`;
+    
+    const raw = localStorage.getItem(chatKey);
+    if (raw) {
+      set(
+        produce((state: ChatType) => {
+          state.chats = JSON.parse(raw)?.chats ?? [];
+        })
+      );
+      return;
+    }
+
+    if (userId !== "guest") {
+      try {
+        const response = await db.listDocuments(
+          DATABASE_ID,
+          COLLECTION_ID,
+          [
+            Query.equal('userId', userId),
+            Query.equal('chatId', chatId)
+          ]
+        );
+
+        if (response.documents.length > 0) {
+          const latestDoc: any = response.documents[response.documents.length - 1];
+          const parsedChats = typeof latestDoc.content === 'string' 
+            ? JSON.parse(latestDoc.content) 
+            : latestDoc.content;
+
+          set(
+            produce((state: ChatType) => {
+              state.chats = parsedChats;
+            })
+          );
+
+          localStorage.setItem(chatKey, JSON.stringify({
+            id: chatId,
+            chats: parsedChats,
+            title: latestDoc.title
+          }));
+        }
+      } catch (err) {
+        console.error("Failed to load conversation from Appwrite:", err);
+      }
+    }
+  },
+
+  resetChatAt: (index) => {
+    set(
+      produce((state: ChatType) => {
+        state.chats[index].content = "";
+      })
+    );
+  },
+
+  // 🗑️ Delete chat session locally and on Appwrite Cloud
+  handleDeleteChats: async (chatid) => {
+    const userId = get().userId;
+    const chatKey = `${userId}_${chatid}`;
+    const historyKey = `chatHistory_${userId}`;
+
+    set(
+      produce((state: ChatType) => {
+        state.chatHistory = state.chatHistory.filter((id) => id !== chatid);
+        state.chats = [];
+        localStorage.removeItem(chatKey);
+        localStorage.setItem(historyKey, JSON.stringify(state.chatHistory));
+      })
+    );
+
+    if (userId !== "guest") {
+      try {
+        const response = await db.listDocuments(
+          DATABASE_ID,
+          COLLECTION_ID,
+          [
+            Query.equal('userId', userId),
+            Query.equal('chatId', chatid)
+          ]
+        );
+
+        for (const doc of response.documents) {
+          await db.deleteDocument(DATABASE_ID, COLLECTION_ID, doc.$id);
+        }
+      } catch (err) {
+        console.error("Failed to delete chat from Appwrite:", err);
+      }
+    }
+  },
+
+  editChatsTitle: (id, title) => {
+    const userId = get().userId;
+    const chatKey = `${userId}_${id}`;
+    set(
+      produce((state: ChatType) => {
+        const chatStr = localStorage.getItem(chatKey);
+        if (!chatStr) return;
+        const chat = JSON.parse(chatStr);
+        chat.title = title;
+        chat.isTitleEdited = true;
+        localStorage.setItem(chatKey, JSON.stringify(chat));
+      })
+    );
+  },
+
+  clearAllChats: async () => {
+    const userId = get().userId;
+    const historyKey = `chatHistory_${userId}`;
+
+    set(
+      produce((state: ChatType) => {
+        state.chatHistory.forEach((id) => {
+          localStorage.removeItem(`${userId}_${id}`);
+        });
+        state.chats = [];
+        state.chatHistory = [];
+        localStorage.removeItem(historyKey);
+      })
+    );
+
+    if (userId !== "guest") {
+      try {
+        const response = await db.listDocuments(
+          DATABASE_ID,
+          COLLECTION_ID,
+          [Query.equal('userId', userId)]
+        );
+
+        for (const doc of response.documents) {
+          await db.deleteDocument(DATABASE_ID, COLLECTION_ID, doc.$id);
+        }
+      } catch (err) {
+        console.error("Failed to clear remote chats on Appwrite:", err);
+      }
+    }
+  },
 }));
+
 const useAuth = create<AuthType>()(
   persist(
     (set) => ({
