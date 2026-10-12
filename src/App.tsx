@@ -46,11 +46,22 @@ function App() {
       const session = await account.get();
       setUser(session);
 
+      // Fetch user preferences where custom avatar is stored
+      let userAvatar = "/imgs/default-avatar.jpg";
+      try {
+        const prefs = await account.getPrefs();
+        if (prefs?.avatar) {
+          userAvatar = prefs.avatar;
+        }
+      } catch (prefErr) {
+        console.warn("Could not load user preferences on startup:", prefErr);
+      }
+
       useAuth.getState().setUser({
         id: session.$id,
         name: session.name,
         email: session.email,
-        avatar: "/imgs/default-avatar.jpg",
+        avatar: userAvatar, // Restores custom profile picture permanently!
       });
 
       useChat.getState().loadUserHistory(session.$id);
