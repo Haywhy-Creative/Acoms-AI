@@ -3,7 +3,14 @@ import Avatar from "../Avatar/Avatar";
 import { createOutline } from "ionicons/icons";
 import classNames from "classnames";
 import { useEffect, useRef, useState } from "react";
-import useChat, { ChatMessageType } from "../../store/store";
+import useChat, {
+  beginAssistantStream,
+  ChatMessageType,
+  endAssistantStream,
+} from "../../store/store";
+import { createMessage } from "../../utils/createMessage";
+import { cancelGroqTurn, clearAssistantHandled } from "../../services/chatService";
+import { regenerateImageTurn } from "../../services/imageTurnService";
 
 type Props = {
   chat: ChatMessageType;
@@ -14,14 +21,47 @@ export default function UserMessage({ chat, chatIndex }: Props) {
   const [edit, setEdit] = useState(false);
   const [updatedQuery, setUpdatedQuery] = useState(chat.content);
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
-  const [editChatMessage, resetChatAt] = useChat((state) => [
-    state.editChatMessage,
-    state.resetChatAt,
-  ]);
+  const editChatMessage = useChat((state) => state.editChatMessage);
+  const resetChatAt = useChat((state) => state.resetChatAt);
+  const truncateChatAfter = useChat((state) => state.truncateChatAfter);
+  const addChat = useChat((state) => state.addChat);
+  const nextMessage = useChat((state) => state.chats[chatIndex + 1] as any);
 
   function handelChatEdit() {
-    editChatMessage(updatedQuery, chatIndex);
-    resetChatAt(chatIndex + 1);
+    const trimmed = updatedQuery.trim();
+    if (!trimmed) return;
+
+    editChatMessage(trimmed, chatIndex);
+
+    if (nextMessage && nextMessage.role === "assistant") {
+      // Reusing this placeholder id means the old stream must be cancelled
+      // before the regenerated request can claim the same turn key.
+      cancelGroqTurn(nextMessage.id);
+      truncateChatAfter(chatIndex + 1);
+      clearAssistantHandled(nextMessage.id);
+      endAssistantStream(nextMessage.id);
+
+      if (nextMessage.type === "image_url") {
+        // The old image must actually be removed, then a fresh placeholder is
+        // generated with the edited prompt by the shared image-turn service.
+        truncateChatAfter(chatIndex);
+        const imagePlaceholder = createMessage("assistant", "", "image_url");
+        addChat(imagePlaceholder, chatIndex + 1);
+        beginAssistantStream(imagePlaceholder.id);
+        void regenerateImageTurn(imagePlaceholder.id, trimmed);
+      } else {
+        // Reuse the text placeholder id so useBot issues exactly one request.
+        resetChatAt(chatIndex + 1);
+        beginAssistantStream(nextMessage.id);
+      }
+    } else {
+      // No reply exists (failed/aborted turn): create a fresh placeholder and
+      // let useBot own the single regeneration request.
+      truncateChatAfter(chatIndex);
+      addChat(createMessage("assistant", "", "text"));
+    }
+
+    setUpdatedQuery(trimmed);
     setEdit(false);
   }
 

@@ -3,19 +3,24 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-"scripts": {
-  "dev": "vite",
-  "build": "vite build",
-  "preview": "vite preview"
-},
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "functions:build": "npx --yes netlify-cli functions:build --src=netlify/functions --functions=.netlify/functions",
+    "link:netlify": "npx --yes netlify-cli link --name acoms-ai2",
+    "deploy:prod": "npm run build && npx --yes netlify-cli deploy --prod --dir=dist --functions=netlify/functions --site=acoms-ai2"
+  },
   "dependencies": {
     "@ionic/react": "^7.3.3",
-    "appwrite": "^28.1.0",
     "axios": "^1.6.7",
     "classnames": "^2.3.2",
+    "firebase": "^13.4.0",
     "framer-motion": "^10.16.4",
     "highlight.js": "^11.9.0",
     "immer": "^10.0.2",
+    "ionicons": "^7.1.2",
     "moment": "^2.29.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -28,6 +33,7 @@
     "zustand": "^4.4.1"
   },
   "devDependencies": {
+    "@types/node": "^18.19.130",
     "@types/react": "^18.0.28",
     "@types/react-dom": "^18.0.11",
     "@types/react-syntax-highlighter": "^15.5.11",
@@ -38,7 +44,7 @@
     "eslint-config-react-app": "^7.0.1",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.3.3",
-    "typescript": "^4.9.3",
+    "typescript": "^5.9.3",
     "vite": "^4.2.0"
   }
 }

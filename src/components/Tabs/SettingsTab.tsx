@@ -4,7 +4,6 @@ import { useState } from "react";
 import Modal from "../modals/Modal";
 import ConfirmDelete from "../ConfirmDelete/ConfirmDelete";
 import classNames from "classnames";
-import { handleExportChats, handleImportChats } from "../../utils/importexport";
 
 const variants = {
   hidden: { opacity: 0 },
@@ -22,10 +21,6 @@ export default function SettingsTab({ visible }: { visible: boolean }) {
   const clearAllChats = useChat((state) => state.clearAllChats);
 
   const [confirmDeleteChats, setConfirmDeleteChats] = useState(false);
-  const [, setImportExportStatus] = useState({
-    importing: false,
-    exporting: false,
-  });
 
   function handleOnChange(e: React.ChangeEvent<HTMLInputElement>) {
     setSendChatHistory(e.target.checked);

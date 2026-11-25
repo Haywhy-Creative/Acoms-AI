@@ -16,9 +16,20 @@ type ChatsHistory = Record<string, ChatHistoryItem[]>;
 export default function ChatHistory() {
   const chatsHistory = useChat(selectChatsHistory) as ChatsHistory;
 
-  const historyKeys = Object.keys(chatsHistory).sort(
-    (a, b) => priority.indexOf(a) - priority.indexOf(b)
-  );
+  // 🛡️ Robust sorting with fallback for unlisted month keys
+  const historyKeys = Object.keys(chatsHistory).sort((a, b) => {
+    const indexA = priority.indexOf(a);
+    const indexB = priority.indexOf(b);
+
+    // If both exist in priority, sort by priority index
+    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+    // If only 'a' is missing, push it to the end
+    if (indexA === -1) return 1;
+    // If only 'b' is missing, push it to the end
+    if (indexB === -1) return -1;
+
+    return 0;
+  });
 
   return (
     <div className="my-3 text-slate-800 dark:text-slate-200 px-1 h-full space-y-3 font-['Plus_Jakarta_Sans',sans-serif]">

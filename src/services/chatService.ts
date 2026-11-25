@@ -1,9 +1,282 @@
 
-import { ChatMessageType, useSettings } from "../store/store";
+import { useSettings } from "../store/store";
 import Swal from "sweetalert2";
+import { buildAttachedFilePrompt } from "../utils/fileText";
 
-const IMAGE_GENERATION_API_URL =
-  "https://api.openai.com/v1/images/generations";
+const GROQ_CHAT_COMPLETIONS_URL =
+  "https://api.groq.com/openai/v1/chat/completions";
+
+// Groq's active free-tier multimodal vision model.
+const GROQ_VISION_MODEL = "qwen/qwen3.8-27b";
+
+// ============================================================
+// OPENAI-COMPATIBLE MESSAGE CONTENT (TEXT + VISION)
+// ============================================================
+// ChatMessageType in the store stays unchanged (`content: string`).
+// These types are only used at the Groq request boundary so we can send
+// multi-content user messages (text + base64 image_url) to the model.
+
+export type GroqTextPart = { type: "text"; text: string };
+export type GroqImagePart = {
+  type: "image_url";
+  image_url: { url: string };
+};
+export type GroqMessagePart = GroqTextPart | GroqImagePart;
+export type GroqMessageContent = string | GroqMessagePart[];
+
+export interface GroqRequestMessage {
+  role: "user" | "assistant" | "system";
+  content: GroqMessageContent;
+}
+
+// UserQuery owns the AI call for freshly submitted prompts. This marker keeps
+// useBot from dispatching a second, duplicate request for the same placeholder.
+const externallyHandledMessageIds = new Set<string>();
+
+export function markAssistantAsHandled(id: string) {
+  externallyHandledMessageIds.add(id);
+}
+
+export function isAssistantHandled(id: string) {
+  return externallyHandledMessageIds.has(id);
+}
+
+// Editing a user message clears the following assistant reply; allow the
+// normal useBot pipeline to regenerate it instead of staying marked as handled.
+export function clearAssistantHandled(id: string) {
+  externallyHandledMessageIds.delete(id);
+  startedGroqTurns.delete(id);
+}
+
+// Attached-file text lives only in memory. Stash the raw pieces, not a fully
+// built prompt, so an edited question can be rebuilt with the current text.
+export interface AttachedFileContext {
+  fileName: string;
+  fileType: string;
+  extractedText: string;
+}
+
+const attachedFileContextByTurn = new Map<string, AttachedFileContext>();
+// Prompts can contain up to 100k characters of file text. Keep only the most
+// recent turns so a long session cannot grow this in-memory map without bound.
+const MAX_STASHED_FILE_CONTEXTS = 12;
+
+export function stashAttachedFileContext(
+  turnKey: string,
+  context: AttachedFileContext
+): void {
+  if (!turnKey || !context) return;
+  attachedFileContextByTurn.delete(turnKey);
+  attachedFileContextByTurn.set(turnKey, context);
+  while (attachedFileContextByTurn.size > MAX_STASHED_FILE_CONTEXTS) {
+    const oldestKey = attachedFileContextByTurn.keys().next().value;
+    if (!oldestKey) break;
+    attachedFileContextByTurn.delete(oldestKey);
+  }
+}
+
+export function takeAttachedFileContext(
+  turnKey: string,
+  userQuestion?: string
+): string | null {
+  const context = attachedFileContextByTurn.get(turnKey) ?? null;
+  if (turnKey) attachedFileContextByTurn.delete(turnKey);
+  if (!context) return null;
+  return buildAttachedFilePrompt(
+    context.fileName,
+    context.fileType,
+    context.extractedText,
+    userQuestion ?? ""
+  );
+}
+
+export function clearAttachedFileContext(turnKey: string): void {
+  if (turnKey) attachedFileContextByTurn.delete(turnKey);
+}
+
+// A single assistant placeholder must never produce two concurrent requests.
+// React StrictMode, effect re-runs and RTDB rehydration can all re-trigger the
+// send path; the placeholder id is used as the stable turn key.
+//
+// The controller is owned by chatService, not by a React effect. Caller aborts
+// are deliberately not forwarded: an effect cleanup/StrictMode remount must
+// never abort the stream that is already writing into this placeholder. Only
+// an explicit account switch/sign-out or message edit cancels a turn.
+const activeGroqTurns = new Map<string, AbortController>();
+
+// Image generation uses a separate abort controller because it does not go
+// through fetchResults. Registering it here lets sign-out/account switch cancel
+// a pending image turn instead of leaving the composer busy until it times out.
+const activeImageTurns = new Map<string, AbortController>();
+
+// useBot tracks ownership by assistant placeholder id. Keeping the marker in
+// this module lets an edit cancel a turn that is still owned by a component.
+const startedGroqTurns = new Set<string>();
+
+export function isGroqTurnStarted(turnKey: string): boolean {
+  return startedGroqTurns.has(turnKey);
+}
+
+export function markGroqTurnStarted(turnKey: string): void {
+  if (turnKey) startedGroqTurns.add(turnKey);
+}
+
+export function clearGroqTurnStarted(turnKey: string): void {
+  if (turnKey) startedGroqTurns.delete(turnKey);
+}
+
+export function beginImageTurn(turnKey: string): AbortController | null {
+  if (!turnKey || activeImageTurns.has(turnKey)) return null;
+  const controller = new AbortController();
+  activeImageTurns.set(turnKey, controller);
+  return controller;
+}
+
+export function endImageTurn(
+  turnKey: string,
+  controller: AbortController
+): void {
+  if (activeImageTurns.get(turnKey) === controller) {
+    activeImageTurns.delete(turnKey);
+  }
+}
+
+export function cancelImageTurn(turnKey: string): void {
+  if (!turnKey) return;
+  const controller = activeImageTurns.get(turnKey);
+  if (!controller) return;
+  activeImageTurns.delete(turnKey);
+  controller.abort();
+}
+
+// Shared, user-facing refusal string. Both the SweetAlert filter and the useBot
+// fallback use it so a blocked prompt is always persisted with the right text.
+export const COMPUTING_REFUSAL =
+  "I'm a Computing and Informatics AI assistant. I can only help with questions related to Computer Science, Cybersecurity, Software Engineering, Information Technology, Data Science, AI, Networking, Programming, and other computing-related fields.";
+
+export type FetchResultStatus =
+  | "completed"
+  | "blocked"
+  | "suppressed"
+  | "aborted";
+
+// Called on sign-out / account switch so an in-flight turn from the previous
+// session cannot suppress the first request of the next one.
+export function resetGroqTurnState(): void {
+  externallyHandledMessageIds.clear();
+  attachedFileContextByTurn.clear();
+  startedGroqTurns.clear();
+  const controllers = [
+    ...Array.from(activeGroqTurns.values()),
+    ...Array.from(activeImageTurns.values()),
+  ];
+  activeGroqTurns.clear();
+  activeImageTurns.clear();
+  controllers.forEach((controller) => controller.abort());
+}
+
+// Editing an assistant turn reuses its placeholder id. Cancel the old request
+// explicitly before beginning the replacement regeneration.
+export function cancelGroqTurn(turnKey: string): void {
+  const controller = activeGroqTurns.get(turnKey);
+  if (controller) {
+    activeGroqTurns.delete(turnKey);
+    controller.abort();
+  }
+  startedGroqTurns.delete(turnKey);
+  cancelImageTurn(turnKey);
+}
+
+function beginGroqTurn(turnKey: string): AbortController | null {
+  if (activeGroqTurns.has(turnKey)) return null;
+  const controller = new AbortController();
+  activeGroqTurns.set(turnKey, controller);
+  return controller;
+}
+
+function endGroqTurn(turnKey: string, controller: AbortController): void {
+  // Never delete a newer turn that might have replaced this key.
+  if (activeGroqTurns.get(turnKey) === controller) {
+    activeGroqTurns.delete(turnKey);
+  }
+}
+
+// Groq rejects message objects that carry unknown keys (id/createdAt/etc.).
+// Only role + content may cross the request boundary.
+function sanitizeGroqMessages(
+  messages: GroqRequestMessage[]
+): GroqRequestMessage[] {
+  return messages
+    .filter(
+      (message) =>
+        message &&
+        (message.role === "user" ||
+          message.role === "assistant" ||
+          message.role === "system")
+    )
+    .map((message) => ({
+      role: message.role,
+      content: message.content,
+    }));
+}
+
+function groqHttpError(response: Response, body: string): Error {
+  const detail = body.replace(/\s+/g, " ").trim().slice(0, 240);
+  console.error(`❌ Groq API ${response.status} ${response.statusText}:`, detail || "(empty error body)");
+  return new Error(
+    `Groq API ${response.status} ${response.statusText}${
+      detail ? `: ${detail}` : ""
+    }`
+  );
+}
+
+function getMessageText(content: GroqMessageContent): string {
+  if (typeof content === "string") return content;
+  return content
+    .filter((part): part is GroqTextPart => part.type === "text")
+    .map((part) => part.text)
+    .join("\n");
+}
+
+// Attached-file prompts wrap the real question in <user_question>. Use only
+// that for topic filtering so words inside the attached document cannot make a
+// valid question look unrelated.
+function getLatestQuestion(messages: GroqRequestMessage[]): string {
+  const latestUserMessage = [...messages]
+    .reverse()
+    .find((message) => message.role === "user");
+  if (!latestUserMessage) return "";
+
+  const text = getMessageText(latestUserMessage.content).trim();
+  const taggedQuestion = text.match(/<user_question>([\s\S]*?)<\/user_question>/i);
+  return (taggedQuestion ? taggedQuestion[1] : text).trim();
+}
+
+function isImageUrlPart(part: GroqMessagePart): part is GroqImagePart {
+  return (
+    part.type === "image_url" &&
+    typeof part.image_url?.url === "string" &&
+    part.image_url.url.length > 0
+  );
+}
+
+function hasVisionPayload(messages: GroqRequestMessage[]): boolean {
+  // Only the latest user turn decides the request mode. Attached-file prompts
+  // embed arbitrary document text, which must never flip a text Q&A to vision.
+  const latestUserMessage = [...messages]
+    .reverse()
+    .find((message) => message.role === "user");
+  if (!latestUserMessage) return false;
+
+  if (Array.isArray(latestUserMessage.content)) {
+    return latestUserMessage.content.some(isImageUrlPart);
+  }
+
+  // Raw data URLs are supported, but only when the entire string is one.
+  return /^data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=\s]+$/i.test(
+    latestUserMessage.content.trim()
+  );
+}
 
 // ============================================================
 // COMPUTING & INFORMATICS SYSTEM INSTRUCTION
@@ -114,7 +387,7 @@ function isObviouslyUnrelated(question: string): boolean {
 // API KEY
 // ============================================================
 
-function getApiKey(): string {
+export function getGroqApiKey(): string {
   const key =
     import.meta.env.VITE_GROQ_API_KEY ||
     localStorage.getItem("apikey");
@@ -132,10 +405,10 @@ function getApiKey(): string {
 // GROQ MODELS
 // ============================================================
 
-const GROQ_MODELS = [
+export const GROQ_MODELS = [
   "openai/gpt-oss-120b",
   "openai/gpt-oss-20b",
-  "qwen/qwen3.6-27b",
+  "qwen/qwen3.8-27b",
 ] as const;
 
 function resolveModel(selected: string): string {
@@ -149,30 +422,40 @@ function resolveModel(selected: string): string {
 // ============================================================
 
 export async function fetchResults(
-  messages: Omit<ChatMessageType, "id" | "type">[],
-  signal: AbortSignal,
+  messages: GroqRequestMessage[],
+  callerSignal: AbortSignal,
   onData: (data: string) => void,
-  onCompletion: () => void
-) {
+  onCompletion: () => void,
+  turnKey?: string
+): Promise<FetchResultStatus> {
+  let turnController: AbortController | null = null;
   try {
-    console.log("🟢 fetchResults CALLED");
-    console.log("📦 messages:", JSON.stringify(messages));
+    if (turnKey) {
+      turnController = beginGroqTurn(turnKey);
+      if (!turnController) {
+        console.log(
+          `⏭️ duplicate Groq request suppressed for turn ${turnKey}`
+        );
+        // Do not call onCompletion here: the winning request still owns this
+        // placeholder. Callers use this status to leave the reply untouched.
+        return "suppressed";
+      }
+    }
+
+    // Own the signal for the whole request lifetime. Caller signals are only
+    // used for untyped/legacy calls without a turn key; forwarding them here
+    // would let a React effect cleanup kill its own active stream.
+    const requestSignal = turnController?.signal ?? callerSignal;
+
+    console.log(`🟢 fetchResults CALLED (${messages.length} messages)`);
 
     // ========================================================
     // CHECK ONLY THE LATEST USER QUESTION
     // ========================================================
 
-    const latestUserMessage = [...messages]
-      .reverse()
-      .find((message) => message.role === "user");
+    const latestQuestion = getLatestQuestion(messages);
 
-    const latestQuestion =
-      latestUserMessage?.content?.trim() || "";
-
-    console.log(
-      "❓ Latest user question:",
-      latestQuestion
-    );
+    console.log(`❓ Latest user question length: ${latestQuestion.length}`);
 
     // ========================================================
     // SWEETALERT FOR OBVIOUSLY UNRELATED QUESTIONS
@@ -182,52 +465,50 @@ export async function fetchResults(
       await Swal.fire({
         icon: "warning",
         title: "Computing & Informatics Only",
-        text: "I'm a Computing & Informatics AI assistant. I can only help with Computer Science, Cybersecurity, Software Engineering, Information Technology, AI, Data Science, Programming, Networking, and other computing-related questions.",
+        text: COMPUTING_REFUSAL,
         confirmButtonText: "Got it",
         confirmButtonColor: "#dc2626",
       });
 
-      // Tell the existing chat system that processing has finished.
+      // Persist the same refusal that the user just saw instead of allowing the
+      // caller to write a generic "No response received." placeholder.
+      onData(COMPUTING_REFUSAL);
       onCompletion();
 
-      return;
+      return "blocked";
     }
 
     // ========================================================
     // API KEY
     // ========================================================
 
-    const apiKey = getApiKey();
-
-    console.log(
-      "🔑 key present:",
-      Boolean(apiKey),
-      "| starts with gsk_:",
-      apiKey?.startsWith("gsk_")
-    );
+    const apiKey = getGroqApiKey();
 
     // ========================================================
-    // SELECTED MODEL
+    // SELECTED MODEL (image payloads force Groq's free vision model)
     // ========================================================
 
     const selectedModel =
       useSettings.getState().settings.selectedModal;
+    const isVisionRequest = hasVisionPayload(messages);
+    const model = isVisionRequest
+      ? GROQ_VISION_MODEL
+      : resolveModel(selectedModel);
 
     console.log(
       "🧠 model from store:",
       selectedModel,
       "| resolved:",
-      resolveModel(selectedModel)
+      model,
+      "| multimodal:",
+      isVisionRequest
     );
 
     // ========================================================
-    // ADD SYSTEM MESSAGE
+    // ADD SYSTEM MESSAGE (Computing & Informatics prompt unchanged)
     // ========================================================
 
-    const messagesWithSystem: Omit<
-      ChatMessageType,
-      "id" | "type"
-    >[] = [
+    const messagesWithSystem: GroqRequestMessage[] = [
       {
         role: "system",
         content: COMPUTING_SYSTEM_MESSAGE,
@@ -235,34 +516,63 @@ export async function fetchResults(
       ...messages,
     ];
 
+    // Strip store-only metadata before the payload reaches Groq.
+    const requestMessages = sanitizeGroqMessages(messagesWithSystem);
+
+    const requestOptions: RequestInit = {
+      method: "POST",
+      signal: requestSignal instanceof AbortSignal ? requestSignal : undefined,
+      headers: {
+        "content-type": "application/json",
+        accept: isVisionRequest ? "application/json" : "text/event-stream",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        temperature: isVisionRequest ? 0.3 : 0.7,
+        max_tokens: 4096,
+        stream: !isVisionRequest,
+        messages: requestMessages,
+      }),
+    };
+
     // ========================================================
-    // GROQ REQUEST
+    // GROQ VISION REQUEST (multimodal, non-streaming JSON)
+    // ========================================================
+
+    if (isVisionRequest) {
+      const visionResponse = await fetch(
+        GROQ_CHAT_COMPLETIONS_URL,
+        requestOptions
+      );
+
+      console.log(
+        "🖼️ Groq vision responded:",
+        visionResponse.status,
+        visionResponse.statusText
+      );
+
+      if (!visionResponse.ok) {
+        const errText = await visionResponse.text().catch(() => "");
+        throw groqHttpError(visionResponse, errText);
+      }
+
+      const visionData = await visionResponse.json();
+      const visionContent =
+        visionData?.choices?.[0]?.message?.content;
+
+      if (visionContent) onData(visionContent);
+      onCompletion();
+      return "completed";
+    }
+
+    // ========================================================
+    // GROQ TEXT REQUEST (streaming SSE)
     // ========================================================
 
     const response = await fetch(
-      "https://api.groq.com/openai/v1/chat/completions",
-      {
-        method: "POST",
-
-        signal:
-          signal instanceof AbortSignal
-            ? signal
-            : undefined,
-
-        headers: {
-          "content-type": "application/json",
-          accept: "text/event-stream",
-          Authorization: `Bearer ${apiKey}`,
-        },
-
-        body: JSON.stringify({
-          model: resolveModel(selectedModel),
-          temperature: 0.7,
-          max_tokens: 4096,
-          stream: true,
-          messages: messagesWithSystem,
-        }),
-      }
+      GROQ_CHAT_COMPLETIONS_URL,
+      requestOptions
     );
 
     console.log(
@@ -273,17 +583,7 @@ export async function fetchResults(
 
     if (!response.ok) {
       const errText = await response.text().catch(() => "");
-
-      console.error(
-        "❌ Groq error body:",
-        errText
-      );
-
-      throw new Error(
-        `Groq API ${response.status}: ${
-          errText || response.statusText
-        }`
-      );
+      throw groqHttpError(response, errText);
     }
 
     const reader = response.body?.getReader();
@@ -359,10 +659,12 @@ export async function fetchResults(
         }
       }
     }
+
+    return "completed";
   } catch (error: any) {
     if (error?.name === "AbortError") {
       console.log("⚠️ request was aborted");
-      return;
+      return "aborted";
     }
 
     console.error(
@@ -374,6 +676,10 @@ export async function fetchResults(
       error?.message ||
         "Error fetching results"
     );
+  } finally {
+    // The key is released only after the request actually settles, never when
+    // a caller effect merely re-runs.
+    if (turnController && turnKey) endGroqTurn(turnKey, turnController);
   }
 }
 
@@ -383,7 +689,7 @@ export async function fetchResults(
 
 export async function fetchModals() {
   try {
-    const apiKey = getApiKey();
+    const apiKey = getGroqApiKey();
 
     const response = await fetch(
       "https://api.groq.com/openai/v1/models",
@@ -432,7 +738,8 @@ export async function fetchModals() {
 }
 
 // ============================================================
-// IMAGE TYPES
+// IMAGE SIZE (legacy settings shape; image generation now lives in
+// src/utils/imageGen.ts and uses the image service)
 // ============================================================
 
 export type ImageSize =
@@ -443,74 +750,3 @@ export type ImageSize =
   | "1920x1080"
   | "1792x1024"
   | "1024x1792";
-
-export type IMAGE_RESPONSE = {
-  created_at: string;
-  data: IMAGE[];
-};
-
-export type IMAGE = {
-  url: string;
-};
-
-export type DallEImageModel =
-  | "dall-e-2"
-  | "dall-e-3";
-
-// ============================================================
-// IMAGE GENERATION
-// ============================================================
-
-export async function generateImage(
-  prompt: string,
-  size: ImageSize,
-  numberOfImages: number
-) {
-  const selectedModal =
-    useSettings.getState().settings.selectedModal;
-
-  const openaiKey =
-    localStorage.getItem("apikey");
-
-  if (!openaiKey) {
-    throw new Error(
-      "Image generation needs an OpenAI key (entered in the UI)"
-    );
-  }
-
-  const response = await fetch(
-    IMAGE_GENERATION_API_URL,
-    {
-      method: "POST",
-
-      headers: {
-        "content-type": "application/json",
-        Authorization: `Bearer ${openaiKey}`,
-      },
-
-      body: JSON.stringify({
-        model: selectedModal,
-        prompt,
-        n: numberOfImages,
-        size,
-      }),
-    }
-  );
-
-  if (!response.ok) {
-    const errText =
-      await response.text().catch(() => "");
-
-    throw new Error(
-      `Image API ${response.status}: ${
-        errText ||
-        "Failed to generate image"
-      }`
-    );
-  }
-
-  const body: IMAGE_RESPONSE =
-    await response.json();
-
-  return body;
-}

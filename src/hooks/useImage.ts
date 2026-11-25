@@ -1,54 +1,94 @@
-import { useCallback, useEffect, useState } from "react";
-import { ImageSize, generateImage } from "../services/chatService";
+import { useEffect, useRef, useState } from "react";
 import useChat, { ChatMessageType } from "../store/store";
-import { createMessage } from "../utils/createMessage";
+import { generateAiImage } from "../utils/imageGen";
+import { isValidGeneratedImageSource } from "../utils/cropGeneratedImage";
+import {
+  assertImageQuotaAvailable,
+  recordImageGeneration,
+  toSafeImageError,
+} from "../utils/imageGenerationGuard";
 
-export default function useImage(
-  index: number,
-  chat: ChatMessageType,
-  size: ImageSize = "512x512"
-) {
-  const [image, setImage] = useState(chat.content);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [query, addChat] = useChat((state) => [
-    state.chats[index - 1].content,
-    state.addChat,
-  ]);
- 
-  const fetchImages = useCallback(handleFetchImages, [
-    query,
-    size,
-    addChat,
-    index,
-  ]);
+function readSavedImage(content: unknown): string | null {
+  return isValidGeneratedImageSource(content) ? content.trim() : null;
+}
 
-  async function handleFetchImages() {
-    setLoading(true);
-    await generateImage(query as string, size, 1)
-      .then((image) => {
-        setImage(image.data[0].url);
-        addChat(
-          createMessage("assistant", image.data[0].url, "image_url"),
-          index
-        );
-      })
-      .catch((error) => {
-        setError(error.message);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }
+function invalidImageError(content: unknown): string | null {
+  const raw = typeof content === "string" ? content.trim() : "";
+  if (!raw || isValidGeneratedImageSource(raw)) return null;
+  return "This saved image is not a valid generated image. Generate a new one.";
+}
+
+export default function useImage(index: number, chat: ChatMessageType) {
+  const initialImage = readSavedImage(chat.content);
+  const [image, setImage] = useState<string | null>(initialImage);
+  // No automatic fallback generation: UserQuery owns the first generation and
+  // BotMessage owns the empty-placeholder skeleton. This hook only displays a
+  // real generated payload or regenerates on an explicit user retry.
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(() =>
+    invalidImageError(chat.content)
+  );
+  const mountedRef = useRef(true);
+  const updateMessageContent = useChat((state) => state.updateMessageContent);
 
   useEffect(() => {
-    if (chat.content) return;
-    fetchImages();
-  }, [fetchImages, chat.content]);
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
-  function refetchImages() {
-    handleFetchImages();
-  }
+  // Safely select the previous user query from the Zustand store.
+  const userQuery = useChat((state) => {
+    const prevIndex = index - 1;
+    if (prevIndex >= 0 && state.chats[prevIndex]) {
+      const content = state.chats[prevIndex].content;
+      return typeof content === "string" ? content : "";
+    }
+    return "";
+  });
+
+  useEffect(() => {
+    const savedImage = readSavedImage(chat.content);
+    setImage(savedImage);
+    setLoading(false);
+    setError(invalidImageError(chat.content));
+  }, [chat.id, chat.content]);
+
+  const refetchImages = async () => {
+    const prompt = userQuery.trim();
+    if (!prompt) {
+      if (mountedRef.current) {
+        setError("No prompt is available for this image. Send a new request.");
+      }
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const currentUserId = useChat.getState().userId;
+      await assertImageQuotaAvailable(currentUserId);
+
+      const generatedUrl = await generateAiImage(prompt);
+      if (!isValidGeneratedImageSource(generatedUrl)) {
+        throw new Error("Image generation returned an invalid image payload.");
+      }
+      if (mountedRef.current) {
+        setImage(generatedUrl);
+        // Persist the regenerated image so a reload does not restore the old one.
+        updateMessageContent(chat.id, generatedUrl, "image_url");
+        // Count only after the regenerated image has been accepted for render.
+        await recordImageGeneration(currentUserId);
+      }
+    } catch (err: any) {
+      if (mountedRef.current) {
+        setError(toSafeImageError(err).message);
+      }
+    } finally {
+      if (mountedRef.current) setLoading(false);
+    }
+  };
 
   return { image, loading, error, refetchImages };
 }

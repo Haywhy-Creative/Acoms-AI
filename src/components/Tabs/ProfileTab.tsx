@@ -2,10 +2,12 @@ import { IonIcon } from "@ionic/react";
 import Avatar from "../Avatar/Avatar";
 import { pencilOutline, createOutline, checkmark } from "ionicons/icons";
 import { useAuth } from "../../store/store";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import classNames from "classnames";
-import { account, storage, ID, Permission, Role } from "../../appwriteConfig";
+import { updateProfile } from "firebase/auth";
+import { auth } from "../../config/firebase";
+import { uploadUserAvatar } from "../../services/profileService";
 
 const variants = {
   hidden: { opacity: 0 },
@@ -14,49 +16,44 @@ const variants = {
 };
 
 export default function ProfileTab({ visible }: { visible: boolean }) {
-  const [avatar, name, setUser] = useAuth((state) => [
+  const [avatar, name, email, userId, setUser] = useAuth((state) => [
     state.user.avatar,
     state.user.name,
+    state.user.email,
+    state.user.id,
     state.setUser,
   ]);
   const [editName, setEditName] = useState(false);
   const [myname, setMyName] = useState(name);
   const [loading, setLoading] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Handle Profile Picture Change & Save to Appwrite Storage Bucket
+  // The auth profile can hydrate after this tab mounts; keep the editor in sync
+  // without overwriting text the user is currently typing.
+  useEffect(() => {
+    if (!editName) setMyName(name);
+  }, [name, editName]);
+
+  // Avatars are compressed in-browser and persisted to RTDB only.
   async function handlePicChange(e: React.ChangeEvent<HTMLInputElement>) {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      
-      try {
-        const uploadedFile = await storage.createFile(
-          "6ac3940c002ffc7b4c55", 
-          ID.unique(), 
-          file,
-          [
-            Permission.read(Role.any()),    
-            Permission.update(Role.users()), 
-            Permission.delete(Role.users())  
-          ]
-        );
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-        const fileUrl = storage.getFileView(
-          "6ac3940c002ffc7b4c55",
-          uploadedFile.$id
-        ).toString();
+    setIsUploadingAvatar(true);
+    setAvatarError("");
 
-        await account.updatePrefs({ avatar: fileUrl });
-
-        setUser({
-          avatar: fileUrl,
-          name,
-          email: `${name}@${name}.com`,
-        });
-
-      } catch (error: any) {
-        console.error("Failed to upload image:", error);
-        alert(error.message || "Failed to upload image");
-      }
+    try {
+      const photoURL = await uploadUserAvatar(file);
+      const authState = useAuth.getState();
+      authState.setUser({ ...authState.user, avatar: photoURL });
+    } catch (error: any) {
+      console.error("Failed to upload image:", error);
+      setAvatarError(error?.message || "Failed to upload image");
+    } finally {
+      setIsUploadingAvatar(false);
+      e.target.value = "";
     }
   }
 
@@ -65,11 +62,14 @@ export default function ProfileTab({ visible }: { visible: boolean }) {
     setLoading(true);
 
     try {
-      await account.updateName(myname);
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error("You must be signed in to update your name.");
+      await updateProfile(currentUser, { displayName: myname });
       setUser({
+        id: userId,
         avatar,
         name: myname,
-        email: `${myname}@${myname}.com`,
+        email,
       });
       setEditName(false);
     } catch (error: any) {
@@ -88,13 +88,13 @@ export default function ProfileTab({ visible }: { visible: boolean }) {
       exit="exit"
       className={classNames("p-4 font-['Plus_Jakarta_Sans',sans-serif] transition-colors duration-200", { hidden: !visible })}
     >
-      <div className="profile-pic group flex items-center justify-center relative mb-6">
+      <div className="profile-pic group flex flex-col items-center justify-center relative mb-6">
         <input
           type="file"
           name="pic"
-          accept="image/*"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          ref={fileInputRef}
           className="hidden"
-          id="pic-file"
           onChange={handlePicChange}
         />
         <div className="relative rounded-full p-1 bg-slate-100 dark:bg-[#252936] border border-slate-200 dark:border-white/10 shadow-lg">
@@ -104,19 +104,25 @@ export default function ProfileTab({ visible }: { visible: boolean }) {
           >
             <button
               type="button"
-              onClick={() => {
-                const fileInput = document.getElementById(
-                  "pic-file"
-                ) as HTMLInputElement;
-                fileInput.click();
-              }}
-              className="invisible absolute z-10 top-0 left-0 right-0 bottom-0 group-hover:visible transition-all duration-200 rounded-full bg-slate-900/60 dark:bg-[#0f111a]/70 backdrop-blur-xs flex items-center justify-center cursor-pointer"
+              disabled={isUploadingAvatar}
+              onClick={() => fileInputRef.current?.click()}
+              className="invisible absolute z-10 top-0 left-0 right-0 bottom-0 group-hover:visible transition-all duration-200 rounded-full bg-slate-900/60 dark:bg-[#0f111a]/70 backdrop-blur-xs flex items-center justify-center cursor-pointer disabled:cursor-wait"
               title="Change profile picture"
             >
               <IonIcon icon={pencilOutline} className="text-xl text-white" />
             </button>
           </Avatar>
         </div>
+        {isUploadingAvatar && (
+          <p className="mt-2 text-xs font-medium text-[#7c4dff] dark:text-[#9670ff]">
+            Uploading profile picture...
+          </p>
+        )}
+        {!isUploadingAvatar && avatarError && (
+          <p className="mt-2 text-xs text-red-500 dark:text-red-400" role="alert">
+            {avatarError}
+          </p>
+        )}
       </div>
 
       <div className="text-center">

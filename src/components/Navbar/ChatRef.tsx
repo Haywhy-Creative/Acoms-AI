@@ -9,7 +9,7 @@ import {
 
 import useChat, { isChatSelected } from "../../store/store";
 import classNames from "classnames";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Modal from "../modals/Modal";
 import ConfirmDelete from "../ConfirmDelete/ConfirmDelete";
 import { createPortal } from "react-dom";
@@ -28,24 +28,43 @@ export default function ChatRef({
   const [editTitle, setEditTitle] = useState(chat.title);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [confirmDeleteChat, setConfirmDeleteChat] = useState(false);
+  const skipBlurSaveRef = useRef(false);
   const isTitleEditeble = isSelected && isEditingTitle;
 
   useEffect(() => {
     setIsEditingTitle(false);
   }, [isSelected]);
 
+  // Keep local input state in sync if store title changes externally
+  useEffect(() => {
+    setEditTitle(chat.title);
+  }, [chat.title]);
+
   function handleEditTitle(id: string, title: string) {
     if (title.trim() === "") {
+      setEditTitle(chat.title); // Revert if empty
+      setIsEditingTitle(false);
       return;
     }
     setIsEditingTitle(false);
-    setEditTitle(title);
-    editChatsTitle(id, title);
+    editChatsTitle(id, title.trim());
   }
+
   function handleDeleteChats(id: string) {
     deleteChat(id);
     setConfirmDeleteChat(false);
   }
+
+  // ⌨️ Keyboard accessibility: Enter to save, Escape to cancel
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleEditTitle(chat.id, editTitle);
+    } else if (e.key === "Escape") {
+      skipBlurSaveRef.current = true;
+      setEditTitle(chat.title);
+      setIsEditingTitle(false);
+    }
+  };
 
   return (
     <div
@@ -59,6 +78,7 @@ export default function ChatRef({
     >
       {!isTitleEditeble && (
         <button
+          type="button"
           className="py-1.5 w-3/4 flex items-center flex-grow transition text-left cursor-pointer"
           onClick={() => viewSelectedChat(chat.id)}
           title={chat.title}
@@ -79,24 +99,38 @@ export default function ChatRef({
           className="bg-slate-100 dark:bg-[#252936] text-slate-900 dark:text-white border border-[#7c4dff] w-4/5 ml-1 p-1.5 rounded-lg outline-none text-xs"
           autoFocus
           onChange={(e) => setEditTitle(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={() => {
+            // Cancel/Confirm/Escape set this flag so the blur race cannot save
+            // a title the user just discarded.
+            if (skipBlurSaveRef.current) {
+              skipBlurSaveRef.current = false;
+              return;
+            }
+            handleEditTitle(chat.id, editTitle);
+          }}
         />
       )}
       {isSelected && !isEditingTitle && (
         <div className="inline-flex w-1/4 mx-1 items-center justify-end space-x-1.5">
           <button
-            className={classNames(
-              "p-1 flex text-slate-500 dark:text-slate-400 hover:text-[#7c4dff] dark:hover:text-[#9670ff] transition-colors"
-            )}
-            onClick={() => setIsEditingTitle(true)}
+            type="button"
+            className="p-1 flex text-slate-500 dark:text-slate-400 hover:text-[#7c4dff] dark:hover:text-[#9670ff] transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsEditingTitle(true);
+            }}
             title="Edit title"
           >
             <IonIcon icon={pencilOutline} />
           </button>
           <button
-            className={classNames(
-              "p-1 flex text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-            )}
-            onClick={() => setConfirmDeleteChat(true)}
+            type="button"
+            className="p-1 flex text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              setConfirmDeleteChat(true);
+            }}
             title="Delete chat"
           >
             <IonIcon icon={trashOutline} />
@@ -106,40 +140,48 @@ export default function ChatRef({
       {isSelected && isEditingTitle && (
         <div className="inline-flex w-1/5 mx-1 items-center justify-end space-x-1.5">
           <button
-            className={classNames(
-              "p-1 flex text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300 transition-colors"
-            )}
-            onClick={() => handleEditTitle(chat.id, editTitle)}
+            type="button"
+            className="p-1 flex text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300 transition-colors"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              skipBlurSaveRef.current = true;
+              handleEditTitle(chat.id, editTitle);
+            }}
             title="Confirm"
           >
             <IonIcon icon={checkmarkOutline} />
           </button>
           <button
-            className={classNames(
-              "p-1 flex text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-            )}
-            onClick={() => setIsEditingTitle(false)}
+            type="button"
+            className="p-1 flex text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              skipBlurSaveRef.current = true;
+              setEditTitle(chat.title);
+              setIsEditingTitle(false);
+            }}
             title="Cancel"
           >
             <IonIcon icon={closeOutline} />
           </button>
         </div>
       )}
-      {createPortal(
-        <Modal visible={confirmDeleteChat}>
-          <ConfirmDelete
-            onDelete={() => handleDeleteChats(chat.id)}
-            onCancel={() => setConfirmDeleteChat(false)}
-          >
-            <p className="text-slate-600 dark:text-slate-300 text-sm">
-              Are you sure you want to delete this chat? This action cannot be
-              undone.
-            </p>
-          </ConfirmDelete>
-        </Modal>,
-        document.getElementById("modal") as HTMLElement,
-        "confirm-delete-chat"
-      )}
+      {document.getElementById("modal") &&
+        createPortal(
+          <Modal visible={confirmDeleteChat}>
+            <ConfirmDelete
+              onDelete={() => handleDeleteChats(chat.id)}
+              onCancel={() => setConfirmDeleteChat(false)}
+            >
+              <p className="text-slate-600 dark:text-slate-300 text-sm">
+                Are you sure you want to delete this chat? This action cannot be
+                undone.
+              </p>
+            </ConfirmDelete>
+          </Modal>,
+          document.getElementById("modal") as HTMLElement,
+          "confirm-delete-chat"
+        )}
     </div>
   );
 }

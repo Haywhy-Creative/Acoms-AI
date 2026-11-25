@@ -15,12 +15,13 @@ export default function Apikey() {
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    localStorage.setItem("apiKey", userapikey);
+    // Key name must match chatService.getApiKey().
+    localStorage.setItem("apikey", userapikey);
     alert("API key saved successfully!");
   }
 
   function handleClose() {
-    localStorage.setItem("apiKey", "sk-");
+    localStorage.removeItem("apikey");
   }
 
   return (

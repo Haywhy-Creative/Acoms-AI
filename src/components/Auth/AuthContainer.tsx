@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
-import { account, ID } from '../../appwriteConfig';
+import {
+  confirmPasswordReset,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  updateProfile,
+} from 'firebase/auth';
+import { auth } from '../../config/firebase';
 import { useAuth, useChat } from '../../store/store';
+import { DEFAULT_AVATAR } from '../../services/profileService';
 import Swal from 'sweetalert2';
 
 interface AuthContainerProps {
@@ -29,7 +37,7 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (password.length < 8) {
+    if (view === 'signup' && password.length < 8) {
       Swal.fire({
         icon: 'error',
         title: 'Password Incorrect',
@@ -48,34 +56,23 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
           return;
         }
         const fullName = `${firstName} ${surname}`.trim();
-        await account.create(ID.unique(), email, password, fullName);
-        await account.createEmailPasswordSession(email, password);
+        const credential = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(credential.user, { displayName: fullName });
       } else {
-        await account.createEmailPasswordSession(email, password);
+        await signInWithEmailAndPassword(auth, email, password);
       }
       
-      const session = await account.get();
+      const session = auth.currentUser;
+      if (!session) throw new Error("Firebase sign-in completed without an active user.");
       setUser(session);
 
-      try {
-        const prefs = await account.getPrefs();
-        useAuth.getState().setUser({
-          id: session.$id,
-          name: session.name,
-          email: session.email,
-          avatar: prefs?.avatar || "/imgs/default-avatar.jpg",
-        });
-        useChat.getState().loadUserHistory(session.$id);
-      } catch (error) {
-        console.error("Failed to load user preferences:", error);
-        useAuth.getState().setUser({
-          id: session.$id,
-          name: session.name,
-          email: session.email,
-          avatar: "/imgs/default-avatar.jpg",
-        });
-        useChat.getState().loadUserHistory(session.$id);
-      }
+      useAuth.getState().setUser({
+        id: session.uid,
+        name: session.displayName || session.email || "Your name?",
+        email: session.email || "",
+        avatar: DEFAULT_AVATAR,
+      });
+      useChat.getState().loadUserHistory(session.uid);
 
       setView('chat');
       Swal.fire({ 
@@ -86,7 +83,7 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
         toast: true, 
         position: 'top-end' 
       });
-    } catch (err: any) {
+    } catch {
       Swal.fire({
         icon: 'error',
         title: 'Sign In Failed',
@@ -103,7 +100,10 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
     setIsAuthLoading(true);
     try {
       const redirectUrl = window.location.origin;
-      await account.createRecovery(recoveryEmail, redirectUrl);
+      await sendPasswordResetEmail(auth, recoveryEmail, {
+        url: redirectUrl,
+        handleCodeInApp: true,
+      });
       Swal.fire({ icon: 'success', title: 'Recovery Email Sent!', text: 'Check your email inbox for your secure password reset link.', confirmButtonColor: '#7c4dff' });
       setView('login');
     } catch (err: any) {
@@ -121,11 +121,11 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({ view, setView, set
     }
     setIsAuthLoading(true);
     try {
-      await account.updateRecovery(recoveryParams.userId, recoveryParams.secret, newPassword);
+      await confirmPasswordReset(auth, recoveryParams.userId, newPassword);
       window.history.replaceState({}, document.title, window.location.pathname);
       Swal.fire({ icon: 'success', title: 'Password Updated!', text: 'Your password has been successfully reset. Please log in.', confirmButtonColor: '#28a745' });
       setView('login');
-    } catch (err: any) {
+    } catch {
       Swal.fire({ icon: 'error', title: 'Reset Failed', text: 'The recovery link is invalid or has expired. Please request a new one.', confirmButtonColor: '#7c4dff' });
       setView('forgot-password');
     } finally {

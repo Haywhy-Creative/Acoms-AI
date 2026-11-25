@@ -1,0 +1,34 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+  # Netlify Functions require Node.js >= 18 for the Fetch API and v2 handler
+  # signature. Keep the build/runtime deterministic across CLI and CI deploys.
+  [build.environment]
+    NODE_VERSION = "20"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# The function also declares both routes in its own `config.path`, so this
+# rewrite is a compatibility fallback for older deploy configurations.
+# Keep it before the SPA catch-all.
+[[redirects]]
+  from = "/api/cf-image"
+  to = "/.netlify/functions/cf-image"
+  status = 200
+  force = true
+
+# Unknown API routes must not be rewritten to the SPA shell.
+[[redirects]]
+  from = "/api/*"
+  to = "/404"
+  status = 404
+  force = true
+
+# SPA fallback stays last so API/function routes are never rewritten to index.html.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

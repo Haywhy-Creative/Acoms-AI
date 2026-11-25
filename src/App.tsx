@@ -1,114 +1,203 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import DefaultIdeas from "./components/DefaultIdea/DefaultIdeas";
 import UserQuery from "./components/UserInput/UserQuery";
 import GptIntro from "./components/Ui/GptIntro";
 import { IonIcon, setupIonicReact } from "@ionic/react";
 import { menuOutline, addOutline, logOutOutline } from "ionicons/icons";
 import Header from "./components/Header/Header";
-import useChat, { chatsLength, useAuth, useTheme, ChatType } from "./store/store";
+import useChat, {
+  chatsLength,
+  useAuth,
+  useTheme,
+  ChatType,
+  endAssistantStream,
+} from "./store/store";
 import classNames from "classnames";
 import Chats from "./components/Chat/Chats";
-import { account } from "./appwriteConfig";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { auth } from "./config/firebase";
 import { AuthContainer } from "./components/Auth/AuthContainer";
 import Navbar from "./components/Navbar/Navbar";
+import { stopWatchingUserChats, watchUserChats } from "./services/chatDbService";
+import { resetGroqTurnState } from "./services/chatService";
+import {
+  DEFAULT_AVATAR,
+  loadUserPhotoURL,
+  stopWatchingUserProfile,
+  watchUserProfile,
+} from "./services/profileService";
 
 setupIonicReact();
+
+function clearUidLocalCaches(uid: string | null | undefined): void {
+  if (!uid) return;
+  Object.keys(localStorage)
+    .filter(
+      (key) =>
+        key.startsWith(`${uid}_`) || key === `chatHistory_${uid}`
+    )
+    .forEach((key) => localStorage.removeItem(key));
+}
 
 function App() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [view, setView] = useState<string>(localStorage.getItem("auth_view") || "landing");
   const [recoveryParams, setRecoveryParams] = useState({ userId: "", secret: "" });
+  // A password-reset action link stays mounted even if this browser still has
+  // a signed-in session; otherwise the reset form can never be submitted.
+  const [isResetLinkActive, setIsResetLinkActive] = useState(false);
+  const resetLinkActiveRef = useRef(false);
 
   const [active, setActive] = useState(false);
   const isChatsVisible = useChat(chatsLength);
   const addNewChat = useChat((state: ChatType) => state.addNewChat);
   const [theme] = useTheme((state) => [state.theme]);
 
-  // Check session on mount & handle recovery URL parameters
+  // Restore the Firebase session and handle password-reset action links.
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const userId = urlParams.get("userId");
-    const secret = urlParams.get("secret");
+    const recoveryCode = urlParams.get("oobCode");
+    const mode = urlParams.get("mode");
 
-    if (userId && secret) {
-      setRecoveryParams({ userId, secret });
+    if (mode === "resetPassword" && recoveryCode) {
+      setRecoveryParams({ userId: recoveryCode, secret: "" });
+      resetLinkActiveRef.current = true;
+      setIsResetLinkActive(true);
       setView("reset-password");
       localStorage.setItem("auth_view", "reset-password");
-      setLoading(false);
-    } else {
-      checkUserStatus();
+      // Keep registering onAuthStateChanged below. Returning early here used to
+      // leave chats/avatar unhydrated after a password reset.
     }
+
+    let disposed = false;
+    let generation = 0;
+    let previousSessionUid: string | null = null;
+
+    const authUnsubscribe = onAuthStateChanged(auth, async (session) => {
+      const currentGeneration = ++generation;
+      const isCurrent = () => !disposed && currentGeneration === generation;
+
+      try {
+      // Drop the previous account's local mirror and in-flight turn markers as
+      // soon as an account switch starts (not only on manual logout).
+      if (previousSessionUid && previousSessionUid !== (session?.uid || null)) {
+        clearUidLocalCaches(previousSessionUid);
+        resetGroqTurnState();
+        endAssistantStream();
+      }
+      previousSessionUid = session?.uid || null;
+
+      // Detach the previous account's listeners before touching store state.
+      stopWatchingUserChats();
+      stopWatchingUserProfile();
+
+      if (session?.uid) {
+        setUser(session);
+
+        // RTDB is the single source of truth for avatars. Firebase Auth
+        // photoURL is intentionally ignored because long Data URLs are rejected.
+        const remotePhotoURL = await loadUserPhotoURL(session.uid);
+        if (!isCurrent()) return;
+        const avatar = remotePhotoURL || DEFAULT_AVATAR;
+
+        useAuth.getState().setUser({
+          id: session.uid,
+          name: session.displayName || session.email || "Your name?",
+          email: session.email || "",
+          avatar,
+        });
+
+        // Wait for the signed-in user's history before attaching live listeners,
+        // so no unauthenticated RTDB read/write is attempted.
+        await useChat.getState().loadUserHistory(session.uid);
+        if (!isCurrent()) return;
+
+        // Live, user-scoped conversation sync. The listener is idempotent per uid.
+        watchUserChats(session.uid, (chats) => {
+          // Queued snapshots from another account or an obsolete session must
+          // never be applied to the active conversation.
+          if (!isCurrent() || auth.currentUser?.uid !== session.uid) return;
+          useChat.getState().applyRemoteChats(chats, session.uid);
+        });
+        watchUserProfile(session.uid, (photoURL) => {
+          // A queued snapshot from the previous account must never overwrite
+          // the avatar after a sign-out or account switch.
+          if (auth.currentUser?.uid !== session.uid) return;
+          const authState = useAuth.getState();
+          authState.setUser({
+            ...authState.user,
+            avatar: photoURL || DEFAULT_AVATAR,
+          });
+        });
+
+        if (!resetLinkActiveRef.current) setView("chat");
+      } else {
+        setUser(null);
+        resetGroqTurnState();
+        endAssistantStream();
+        useAuth.getState().setUser({
+          id: "",
+          name: "Your name?",
+          email: "",
+          avatar: DEFAULT_AVATAR,
+        });
+        useChat.getState().loadUserHistory("guest");
+
+        const savedView = localStorage.getItem("auth_view");
+        if (savedView === "signup" || savedView === "forgot-password" || savedView === "reset-password") {
+          setView(savedView);
+        } else {
+          setView("login");
+          localStorage.setItem("auth_view", "login");
+        }
+      }
+      } finally {
+        // Never leave the app stuck on the splash screen if a RTDB read fails.
+        if (isCurrent()) setLoading(false);
+      }
+    });
+
+    return () => {
+      disposed = true;
+      generation += 1;
+      authUnsubscribe();
+      stopWatchingUserChats();
+      stopWatchingUserProfile();
+    };
   }, []);
 
-  const checkUserStatus = async () => {
-    try {
-      const session = await account.get();
-      setUser(session);
-
-      // Fetch user preferences where custom avatar is stored
-      let userAvatar = "/imgs/default-avatar.jpg";
-      try {
-        const prefs = await account.getPrefs();
-        if (prefs?.avatar) {
-          userAvatar = prefs.avatar;
-        }
-      } catch (prefErr) {
-        console.warn("Could not load user preferences on startup:", prefErr);
-      }
-
-      useAuth.getState().setUser({
-        id: session.$id,
-        name: session.name,
-        email: session.email,
-        avatar: userAvatar, // Restores custom profile picture permanently!
-      });
-
-      useChat.getState().loadUserHistory(session.$id);
-      setView("chat");
-    } catch (err) {
-      setUser(null);
-
-      useAuth.getState().setUser({
-        id: "",
-        name: "Your name?",
-        email: "",
-        avatar: "/imgs/default-avatar.jpg",
-      });
-
-      useChat.getState().loadUserHistory("guest");
-
-      const savedView = localStorage.getItem("auth_view");
-      if (savedView === "signup" || savedView === "forgot-password" || savedView === "reset-password") {
-        setView(savedView);
-      } else {
-        setView("login");
-        localStorage.setItem("auth_view", "login");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleLogout = async () => {
+    const previousUid = auth.currentUser?.uid;
     try {
-      await account.deleteSession("current");
-      setUser(null);
-
-      useAuth.getState().setUser({
-        id: "",
-        name: "Your name?",
-        email: "",
-        avatar: "/imgs/default-avatar.jpg",
-      });
-
-      useChat.getState().loadUserHistory("guest");
-
-      setView("login");
-      localStorage.setItem("auth_view", "login");
+      stopWatchingUserChats();
+      stopWatchingUserProfile();
+      await signOut(auth);
     } catch (err) {
       console.error("Logout error:", err);
+      return; // stay authenticated if Firebase rejected the sign-out
     }
+
+    setUser(null);
+    resetGroqTurnState();
+    endAssistantStream();
+    setRecoveryParams({ userId: "", secret: "" });
+    useAuth.getState().setToken("");
+    localStorage.removeItem("token");
+    useAuth.getState().setUser({
+      id: "",
+      name: "Your name?",
+      email: "",
+      avatar: DEFAULT_AVATAR,
+    });
+
+    void useChat.getState().loadUserHistory("guest");
+
+    // Drop uid-scoped local caches so the next account cannot see this data.
+    clearUidLocalCaches(previousUid);
+
+    setView("login");
+    localStorage.setItem("auth_view", "login");
   };
 
   useEffect(() => {
@@ -132,13 +221,17 @@ function App() {
   }
 
   // Authentication & Landing Gate
-  if (!user && view !== "chat") {
+  if (isResetLinkActive || (!user && view !== "chat")) {
     return (
       <AuthContainer
         view={view}
         setView={(newView) => {
           setView(newView);
           localStorage.setItem("auth_view", newView);
+          if (newView !== "reset-password") {
+            resetLinkActiveRef.current = false;
+            setIsResetLinkActive(false);
+          }
         }}
         setUser={setUser}
         recoveryParams={recoveryParams}
