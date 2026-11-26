@@ -28,10 +28,11 @@ const model =
 const cfResponse = await fetch(
   `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
   {
+    method: "POST",
  
 
-   method: "POST",
-    headers: {
+
+   headers: {
       Authorization: `Bearer ${apiToken}`,
       "Content-Type": "application/json",
     },
@@ -47,34 +48,33 @@ i
 
 
 
-
 f (!cfResponse.ok) {
   const errText = await cfResponse.text();
   return new Response(
     JSON.stringify({ error: "Cloudflare AI request failed", details: errText }),
+    { status: cfResponse.status, headers: { "Content-Type": "application/json" } }
  
 
 
 
-   { status: cfResponse.status, headers: { "Content-Type": "application/json" } }
-  );
+
+ );
 }
 
 const contentType = cfResponse.headers.get("content-type") || "";
-i
-
-
-
-
-f (contentType.includes("application/json")) {
-  const jsonData = await cfResponse.json();
-  const base64Image = jsonData?.result?.image;
-  if (base64Image) {
+if (contentType.includes("application/json")) {
  
 
 
 
-   const binary = Uint8Array.from(atob(base64Image), (c) => c.charCodeAt(0));
+
+ const jsonData = await cfResponse.json();
+  const base64Image = jsonData?.result?.image;
+  if (base64Image) {
+    const bi
+
+
+nary = Uint8Array.from(atob(base64Image), (c) => c.charCodeAt(0));
     return new Response(binary, {
       status: 200,
  
@@ -95,26 +95,26 @@ f (contentType.includes("application/json")) {
  });
 }
 
-const imageBuffer = await cfResponse.arrayBuffer();
+c
+
+
+onst imageBuffer = await cfResponse.arrayBuffer();
+return new Response(imageBuffer, {
+  status: 200,
+ 
+
+
+ headers: { "Content-Type": contentType || "image/png" },
+});
+} catch (error) {
 r
 
 
-
-eturn new Response(imageBuffer, {
-  status: 200,
-  headers: { "Content-Type": contentType || "image/png" },
-}
-
-
-);
-} catch (error) {
-return new Response(
- 
-
-
- JSON.stringify({
+eturn new Response(
+  JSON.stringify({
     error: "Failed to generate image",
  
+
 
    message: error instanceof Error ? error.message : "Unknown error",
   }),
