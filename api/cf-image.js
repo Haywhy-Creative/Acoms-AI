@@ -4,7 +4,7 @@ return res.status(405).json({ error: "Method not allowed" });
 }
 
 try {
-const accountId = process.env.CF_ACCOUNT_ID;
+const accountId = process.env.CF_ACCOUNT_ID || process.env.VITE_CF_ACCOUNT_ID;
 const apiToken = process.env.CF_AI_TOKEN;
 
 if (!accountId || !apiToken) {
@@ -30,7 +30,6 @@ const cfResponse = await fetch(
     headers: {
  
 
-
      Authorization: `Bearer ${apiToken}`,
       "Content-Type": "application/json",
     },
@@ -38,19 +37,22 @@ const cfResponse = await fetch(
   }
 );
 
+
+
+
+
+
+
 if (!cfResponse.ok) {
-  const errText = await cfResponse.t
-
-
-
-
-
-
-
-ext();
+  const errText = await cfResponse.text();
   return res.status(cfResponse.status).json({
     error: "Cloudflare AI request failed",
-    details: errText,
+   
+
+
+
+
+ details: errText,
   });
 }
 
@@ -58,46 +60,43 @@ c
 
 
 
-
-
-
 onst contentType = cfResponse.headers.get("content-type") || "";
 if (contentType.includes("application/json")) {
   const jsonData = await cfResponse.json();
-  const base64Image = jsonData?.result?.image;
-  if
-
-
-
- (base64Image) {
-    const buffer = Buffer.from(base64Image, "base64");
-    res.setHeader("Content-Type", "image/png");
-    return res.status(200).send(buffer);
  
 
 
+ const base64Image = jsonData?.result?.image;
+  if (base64Image) {
+    const buffer = Buffer.from(base64Image, "base64");
+ 
 
- }
-  return res.status(200).json(jsonData);
+
+   res.setHeader("Content-Type", "image/png");
+    return res.status(200).send(buffer);
+  }
+ 
+
+
+ return res.status(200).json(jsonData);
 }
 
 c
 
 
-
 onst arrayBuffer = await cfResponse.arrayBuffer();
 res.setHeader("Content-Type", contentType || "image/png");
-return res.status(200).send(Buffer.from(arrayBuffer));
-}
+r
 
+eturn res.status(200).send(Buffer.from(arrayBuffer));
+} catch (error) {
+re
 
- catch (error) {
-return res.status(500).json({
+turn res.status(500).json({
   error: "Failed to generate image",
-  message: error in
+ 
 
-
-stanceof Error ? error.message : "Unknown error",
+ message: error instanceof Error ? error.message : "Unknown error",
 });
 }
 }
