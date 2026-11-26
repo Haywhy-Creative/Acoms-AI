@@ -172,5 +172,14 @@ export function toSafeImageError(error: unknown): Error {
   if (message === SHARED_QUOTA_ERROR_MESSAGE) {
     return new SharedQuotaExceededError();
   }
+
+  // Pass through real error messages from the proxy so users see the actual
+  // failure reason (e.g. "Cloudflare Workers AI request failed (401 Unauthorized)
+  // — invalid token"). Only fall back to the generic message when there is nothing
+  // meaningful to show.
+  if (message && message !== IMAGE_GENERATION_ERROR_MESSAGE) {
+    return new Error(message);
+  }
+
   return new Error(IMAGE_GENERATION_ERROR_MESSAGE);
 }

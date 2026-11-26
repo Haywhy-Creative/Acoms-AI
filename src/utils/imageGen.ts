@@ -9,7 +9,7 @@ export { cropGeneratedImage, MAX_CROPPED_IMAGE_DATA_URL_LENGTH };
 const API_ROOT = "https://api.cloudflare.com/client/v4/accounts";
 const DEFAULT_IMAGE_MODEL = "@cf/black-forest-labs/flux-1-schnell";
 const FALLBACK_IMAGE_MODEL = "@cf/black-forest-labs/flux-2-klein-9b";
-const DEFAULT_PROXY_URLS = ["/api/cf-image", "/.netlify/functions/cf-image"] as const;
+const DEFAULT_PROXY_URLS = ["/api/cf-image"] as const;
 const REQUEST_TIMEOUT_MS = 120_000;
 
 // Shared account quota / capacity failures must be surfaced with one exact,
@@ -225,6 +225,20 @@ async function finishImageResponse(response: Response): Promise<string> {
     const raw = await response.text().catch(() => "");
     if (isQuotaStatus(response.status) || isQuotaErrorText(raw)) {
       throw sharedQuotaError();
+    }
+    // Try to surface the real error message from the proxy's JSON body.
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const msg = typeof parsed?.error === "string" ? parsed.error.trim() : "";
+      const detail = typeof parsed?.details === "string" ? parsed.details.trim() : "";
+      if (msg) {
+        throw new Error(detail ? `${msg} — ${detail}` : msg);
+      }
+    } catch (parseErr) {
+      // If the rethrow above produced an Error, propagate it.
+      if (parseErr instanceof Error && parseErr.message !== "Unexpected token") {
+        throw parseErr;
+      }
     }
     throw genericError();
   }
