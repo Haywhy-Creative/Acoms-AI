@@ -29,27 +29,28 @@ const cfResponse = await fetch(
   `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
   {
     method: "POST",
- 
-
-
-   headers: {
+    headers: {
       Authorization: `Bearer ${apiToken}`,
-      "Content-Type": "application/json",
+      "Content-Type": "application/json"
+
+
+
+
+,
     },
     body: JSON.stringify({ prompt }),
   }
 );
 
-i
+if (!cfResponse.ok) {
+ 
 
 
 
 
 
 
-
-f (!cfResponse.ok) {
-  const errText = await cfResponse.text();
+ const errText = await cfResponse.text();
   return new Response(
     JSON.stringify({ error: "Cloudflare AI request failed", details: errText }),
     { status: cfResponse.status, headers: { "Content-Type": "application/json" } }
@@ -57,40 +58,39 @@ f (!cfResponse.ok) {
 
 
 
-
  );
 }
 
 const contentType = cfResponse.headers.get("content-type") || "";
-if (contentType.includes("application/json")) {
- 
+i
 
 
 
+f (contentType.includes("application/json")) {
+  const jsonData = await cfResponse.json();
+  const bas
 
- const jsonData = await cfResponse.json();
-  const base64Image = jsonData?.result?.image;
+e64Image = jsonData?.result?.image;
   if (base64Image) {
-    const bi
+    const binary = Uint8Array.from(atob(base64Image), (c) => c.charCodeAt(0));
+ 
 
 
-nary = Uint8Array.from(atob(base64Image), (c) => c.charCodeAt(0));
-    return new Response(binary, {
+   return new Response(binary, {
       status: 200,
+      headers: { "Content-Type": "image/png" },
  
 
 
-     headers: { "Content-Type": "image/png" },
-    });
+   });
   }
+  return new Response(JSON.stringify(jsonData), {
  
 
 
- return new Response(JSON.stringify(jsonData), {
-    status: 200,
+   status: 200,
     headers: { "Content-Type": "application/json" },
  
-
 
  });
 }
@@ -100,29 +100,29 @@ c
 
 onst imageBuffer = await cfResponse.arrayBuffer();
 return new Response(imageBuffer, {
-  status: 200,
  
 
+ status: 200,
+  headers: { "Content-Type": contentType || "image/png" },
+}
 
- headers: { "Content-Type": contentType || "image/png" },
-});
+);
 } catch (error) {
 r
 
-
 eturn new Response(
   JSON.stringify({
-    error: "Failed to generate image",
  
 
-
-   message: error instanceof Error ? error.message : "Unknown error",
-  }),
+   error: "Failed to generate image",
+    message: error instanceof Error ? error.message : "Unknown error",
  
 
- { status: 500, headers: { "Content-Type": "application/json" } }
-);
+ }),
+  { status: 500, headers: { "Content-Type": "application/json" } }
+)
+
+;
+}
 }
 
-
-}
